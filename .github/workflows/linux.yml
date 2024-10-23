@@ -1,0 +1,28 @@
+name: build tests
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: configure cmake
+      run: cmake -S ${{github.workspace}}/test -B ${{github.workspace}}/build \
+                 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}                       \
+                 -DORBI_PEDANTIC=ON
+
+    - name: build
+      run: cmake --build ${{github.workspace}}/build -j
+
+    - name: test
+      run: ${{github.workspace}}/build/test
