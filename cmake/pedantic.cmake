@@ -1,7 +1,11 @@
 include_guard(GLOBAL)
 
 add_library(pedantic INTERFACE)
-target_compile_options(pedantic INTERFACE "-Wall" "-Werror" "-pedantic"
-                                          "-Wshadow")
+if(NOT MSVC)
+  target_compile_options(pedantic INTERFACE "-Wall" "-Werror" "-pedantic"
+                                            "-Wshadow")
+else()
+  target_compile_options(pedantic INTERFACE "/W4" "/WX")
+endif()
 
 add_library(pedantic::pedantic ALIAS pedantic)
