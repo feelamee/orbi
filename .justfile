@@ -10,7 +10,7 @@ build src="test/" build_type="dbg" platform=os() rebuild="false":
     #!/usr/bin/sh
 
     export ORBI_ARCH="{{arch}}"
-    export ORBI_PLATFORM="{{ if platform == "linux" { "unknown-linux" } else { "pc-windows" } }}"
+    export ORBI_PLATFORM="{{platform}}"
     export ORBI_TOOLCHAIN="{{toolchain}}"
     export ORBI_BUILD_TYPE="{{ if build_type == "dbg" { "Debug" } else { "Release" } }}"
     export ORBI_EXTRA_CMAKE_FLAGS="{{ if platform != "windows" { linux_cmake_flags } else { windows_cmake_flags } }}"
