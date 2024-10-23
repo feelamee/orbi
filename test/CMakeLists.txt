@@ -27,5 +27,6 @@ if(ORBI_SANITIZER)
   target_link_libraries(test PRIVATE sanitizer::address sanitizer::undefined)
 endif()
 
+# TODO: let's think up something better...
 add_subdirectory("../orbi" "${CMAKE_BINARY_DIR}/orbi")
 target_link_libraries(test PRIVATE orbi::orbi)
