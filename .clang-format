@@ -101,3 +101,4 @@ SpacesInCStyleCastParentheses: false
 SpacesInParentheses: false
 SpacesInSquareBrackets: false
 QualifierAlignment: Right
+IndentPPDirectives: AfterHash

@@ -2,3 +2,5 @@ build*/
 .git
 .helix/
 .cache/
+compile_commands.json
+generated/

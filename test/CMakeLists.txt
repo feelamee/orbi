@@ -1,9 +1,12 @@
 cmake_minimum_required(VERSION 3.5)
 project(test)
 
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/../cmake/")
+set(ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
+
+list(APPEND CMAKE_MODULE_PATH "${ROOT}/cmake/")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -19,16 +22,15 @@ add_executable(test "main.test.cpp")
 target_compile_features(test PRIVATE cxx_std_20)
 target_link_libraries(test PRIVATE doctest::doctest)
 
-if(ORBI_PEDANTIC)
-  include(pedantic)
-  target_link_libraries(test PRIVATE pedantic::pedantic)
-endif()
+include(pedantic)
+include(sanitizer)
 
-if(ORBI_SANITIZER)
-  include(sanitizer)
-  target_link_libraries(test PRIVATE sanitizer::address sanitizer::undefined)
-endif()
+target_link_libraries(test
+                      PRIVATE $<$<BOOL:${ORBI_PEDANTIC}>:pedantic::pedantic>)
+target_link_libraries(
+  test PRIVATE $<$<BOOL:${ORBI_SANITIZER}>:sanitizer::address
+               sanitizer::undefined>)
 
 # TODO: let's think up something better... e.g. using cmake modules
-add_subdirectory("../orbi" "${CMAKE_BINARY_DIR}/orbi")
+add_subdirectory("${ROOT}/orbi" "${CMAKE_CURRENT_BINARY_DIR}/orbi")
 target_link_libraries(test PRIVATE orbi::orbi)
