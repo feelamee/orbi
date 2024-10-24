@@ -6,7 +6,9 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
 set(include_dir "${CMAKE_CURRENT_SOURCE_DIR}/include/")
 
-if(BULID_SHARED_LIBS)
+message(STATUS "BUILD_SHARED_LIBS: ${BUILD_SHARED_LIBS}")
+
+if(BUILD_SHARED_LIBS)
   add_library(orbi SHARED)
 else()
   add_library(orbi STATIC)
@@ -15,6 +17,25 @@ endif()
 target_sources(orbi PRIVATE "${include_dir}/orbi/util.hpp" "src/util.cpp")
 target_compile_features(orbi PUBLIC cxx_std_20)
 target_include_directories(orbi PUBLIC "${include_dir}")
+
+include(FetchContent)
+
+if(BUILD_SHARED_LIBS)
+  set(SDL_SHARED ON)
+  set(SDL_STATIC OFF)
+else()
+  set(SDL_SHARED OFF)
+  set(SDL_STATIC ON)
+endif()
+
+FetchContent_Declare(
+  SDL3
+  GIT_REPOSITORY "https://github.com/libsdl-org/SDL"
+  GIT_TAG "9493e6974f70a906950c9d8196c9a9982300f261")
+FetchContent_MakeAvailable(SDL3)
+
+# TODO: use `PRIVATE` after adding all api needed in examples to `orbi`
+target_link_libraries(orbi PUBLIC SDL3::SDL3 $<$<BOOL:${ANDROID}>:anroid log>)
 
 include(GenerateExportHeader)
 

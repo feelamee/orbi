@@ -1,15 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(triangle)
 
-set(ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../..")
-
-list(APPEND CMAKE_MODULE_PATH "${ROOT}/cmake/")
-
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
 add_executable(triangle "src/main.cpp")
 target_compile_features(triangle PRIVATE cxx_std_20)
 
