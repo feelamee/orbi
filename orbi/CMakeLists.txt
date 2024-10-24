@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.5)
 project(orbi LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
@@ -31,7 +29,7 @@ string(TOUPPER ${export_file_name_c_identifier} export_file_name_header_guard)
 
 generate_export_header(
   orbi EXPORT_FILE_NAME "${include_dir}/orbi/generated/${export_file_name}"
-  INCLUDE_GUARD_NAME "ORIB_${export_file_name_header_guard}")
+  INCLUDE_GUARD_NAME "ORBI_${export_file_name_header_guard}")
 
 target_compile_definitions(
   orbi PRIVATE "$<$<BOOL:${BUILD_SHARED_LIBS}>:ORBI_BUILD_TYPE_SHARED>")
