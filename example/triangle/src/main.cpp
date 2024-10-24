@@ -16,7 +16,7 @@ public:
     scope_exit& operator=(scope_exit&&) = delete;
 
     scope_exit(Fn&& f)
-        : fn{ std::forward<Fn&&>(f) }
+        : fn{ f }
     {
     }
 
