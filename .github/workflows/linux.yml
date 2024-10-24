@@ -17,12 +17,14 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: configure cmake
-      run: cmake -S ${{github.workspace}}/test -B ${{github.workspace}}/build \
-                 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}                       \
+      run: cmake -S "${{github.workspace}}/test"               \
+                 -B "${{github.workspace}}/build"              \
+                 -C "${{github.workspace}}/cmake/common.cmake" \
+                 -DCMAKE_BUILD_TYPE="${{env.BUILD_TYPE}}"      \
                  -DORBI_PEDANTIC=ON
 
     - name: build
-      run: cmake --build ${{github.workspace}}/build -j
+      run: cmake --build "${{github.workspace}}/build" -j
 
     - name: test
-      run: ${{github.workspace}}/build/test
+      run: "${{github.workspace}}/build/test"
