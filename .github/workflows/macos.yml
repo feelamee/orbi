@@ -2,9 +2,9 @@ name: test macos
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ '*' ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ '*' ]
 
 env:
   BUILD_TYPE: Release
@@ -18,11 +18,12 @@ jobs:
     - uses: NcStudios/VulkanCI@v1.1
 
     - name: configure cmake
-      run: cmake -S "${{github.workspace}}/test"               \
-                 -B "${{github.workspace}}/build"              \
-                 -C "${{github.workspace}}/cmake/common.cmake" \
-                 -DCMAKE_BUILD_TYPE="${{env.BUILD_TYPE}}"      \
-                 -DORBI_PEDANTIC=ON
+      run: >
+        cmake -S "${{github.workspace}}/test"
+        -B "${{github.workspace}}/build"
+        -C "${{github.workspace}}/cmake/common.cmake"
+        -DCMAKE_BUILD_TYPE="${{env.BUILD_TYPE}}"
+        -DORBI_PEDANTIC=ON
 
     - name: build
       run: cmake --build "${{github.workspace}}/build" -j
