@@ -18,6 +18,14 @@ target_sources(orbi PRIVATE "${include_dir}/orbi/util.hpp" "src/util.cpp")
 target_compile_features(orbi PUBLIC cxx_std_20)
 target_include_directories(orbi PUBLIC "${include_dir}")
 
+include(pedantic)
+target_link_libraries(orbi
+                      PUBLIC $<$<BOOL:${ORBI_PEDANTIC}>:pedantic::pedantic>)
+
+include(sanitizer)
+target_link_libraries(orbi PUBLIC $<$<BOOL:${ORBI_SANITIZER}>:sanitizer::address
+                                  sanitizer::undefined>)
+
 include(FetchContent)
 
 if(BUILD_SHARED_LIBS)
