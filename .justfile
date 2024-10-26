@@ -18,6 +18,7 @@ build src="test/" build_type="dbg" platform=os() rebuild="false":
     export ORBI_BUILD_TYPE="{{ if build_type == "dbg" { "Debug" } else { "Release" } }}"
     export ORBI_EXTRA_CMAKE_FLAGS="{{ if platform != "windows" { linux_cmake_flags } else { windows_cmake_flags } }}"
     export ORBI_BUILD_DIR="{{build_dir}}/{{src}}/${ORBI_BUILD_TYPE}/${ORBI_ARCH}/${ORBI_PLATFORM}/${ORBI_TOOLCHAIN}"
+    export ORBI_EXTRA_CMAKE_CXX_FLAGS="{{ if platform != "windows" { '-DCMAKE_CXX_FLAGS="-fcolor-diagnostics"' } else { '' } }}"
 
     mkdir -p "${ORBI_BUILD_DIR}"
 
@@ -27,7 +28,8 @@ build src="test/" build_type="dbg" platform=os() rebuild="false":
           -G Ninja                                                                                    \
           ${ORBI_EXTRA_CMAKE_FLAGS}                                                                   \
           {{ if rebuild == "true" { "--fresh" } else { "" } }}                                        \
-          -C "{{cmake_dir}}/common.cmake"
+          -C "{{cmake_dir}}/common.cmake"                                                             \
+          ${ORBI_EXTRA_CMAKE_CXX_FLAGS}
 
     [[ $? != 0 ]] && exit 1
 
