@@ -69,6 +69,7 @@ Checks: '-*, # disable all to specify needed manually
         ,-cppcoreguidelines-owning-memory
         ,-cppcoreguidelines-avoid-magic-numbers
         ,-cppcoreguidelines-avoid-do-while
+        ,-cppcoreguidelines-pro-type-reinterpret-cast
         ,clang-analyzer-*
 
         ,misc-const-correctness
