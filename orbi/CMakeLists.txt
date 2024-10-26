@@ -17,6 +17,7 @@ endif()
 target_sources(orbi PRIVATE "${include_dir}/orbi/util.hpp" "src/util.cpp")
 target_compile_features(orbi PUBLIC cxx_std_20)
 target_include_directories(orbi PUBLIC "${include_dir}")
+target_link_libraries(orbi PRIVATE $<$<BOOL:${ANDROID}>:anroid log>)
 
 include(pedantic)
 target_link_libraries(orbi
@@ -43,7 +44,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(SDL3)
 
 # TODO: use `PRIVATE` after adding all api needed in examples to `orbi`
-target_link_libraries(orbi PUBLIC SDL3::SDL3 $<$<BOOL:${ANDROID}>:anroid log>)
+target_link_libraries(orbi PUBLIC SDL3::SDL3)
 
 include(GenerateExportHeader)
 
