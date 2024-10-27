@@ -2,8 +2,6 @@
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
 
-#include <set>
-
 // workaround for bug https://github.com/libsdl-org/SDL/issues/11328
 #undef VK_DEFINE_NON_DISPATCHABLE_HANDLE
 #include <vulkan/vulkan_raii.hpp>
@@ -199,11 +197,11 @@ main()
         [&]() -> queue_family_index_type
         {
             auto const queue_families{ physical_device.getQueueFamilyProperties() };
-            auto const it = std::ranges::find_if(queue_families,
-                                                 [](auto const props) {
-                                                     return static_cast<bool>(props.queueFlags &
-                                                                              vk::QueueFlagBits::eGraphics);
-                                                 });
+            auto const it{ std::ranges::find_if(queue_families,
+                                                [](auto const props) {
+                                                    return static_cast<bool>(props.queueFlags &
+                                                                             vk::QueueFlagBits::eGraphics);
+                                                }) };
 
             assert(it != end(queue_families));
 
@@ -215,9 +213,10 @@ main()
         [&]() -> queue_family_index_type
         {
             auto const queue_families{ physical_device.getQueueFamilyProperties() };
-            auto const it =
+            auto const it{
                 std::ranges::find_if(queue_families, [&, i = 0](auto const) mutable
-                                     { return physical_device.getSurfaceSupportKHR(i++, *surface); });
+                                     { return physical_device.getSurfaceSupportKHR(i++, *surface); })
+            };
 
             assert(it != end(queue_families));
 
