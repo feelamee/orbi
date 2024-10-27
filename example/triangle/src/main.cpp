@@ -2,6 +2,8 @@
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
 
+#include <set>
+
 // workaround for bug https://github.com/libsdl-org/SDL/issues/11328
 #undef VK_DEFINE_NON_DISPATCHABLE_HANDLE
 #include <vulkan/vulkan_raii.hpp>
@@ -191,8 +193,10 @@ main()
 
     vk::raii::PhysicalDevice const physical_device{ instance.enumeratePhysicalDevices().at(0) };
 
-    std::uint32_t const queue_family_index{
-        [&]
+    using queue_family_index_type = std::uint32_t;
+
+    auto const graphics_queue_family_index{
+        [&]() -> queue_family_index_type
         {
             auto const queue_families{ physical_device.getQueueFamilyProperties() };
             auto const it = std::ranges::find_if(queue_families,
@@ -200,24 +204,47 @@ main()
                                                      return static_cast<bool>(props.queueFlags &
                                                                               vk::QueueFlagBits::eGraphics);
                                                  });
+
             assert(it != end(queue_families));
 
-            return static_cast<std::uint32_t>(it - begin(queue_families));
+            return it - begin(queue_families);
         }()
     };
 
+    auto const present_queue_family_index{
+        [&]() -> queue_family_index_type
+        {
+            auto const queue_families{ physical_device.getQueueFamilyProperties() };
+            auto const it =
+                std::ranges::find_if(queue_families, [&, i = 0](auto const) mutable
+                                     { return physical_device.getSurfaceSupportKHR(i++, *surface); });
+
+            assert(it != end(queue_families));
+
+            return it - begin(queue_families);
+        }()
+    };
+
+    std::set const unique_queue_families{ graphics_queue_family_index, present_queue_family_index };
+
     float const queue_priority{ 1 };
-    vk::DeviceQueueCreateInfo const queue_create_info{ {}, queue_family_index, 1, &queue_priority };
+    std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
+    for (auto const& qf : unique_queue_families)
+    {
+        queue_create_infos.emplace_back(vk::DeviceQueueCreateFlags{}, qf, 1, &queue_priority);
+    }
+
     vk::DeviceCreateInfo const device_create_info{ {},
-                                                   1,
-                                                   &queue_create_info,
+                                                   static_cast<std::uint32_t>(queue_create_infos.size()),
+                                                   queue_create_infos.data(),
 #ifndef NDEBUG
                                                    layers.size(),
                                                    layers.data()
 #endif
     };
     vk::raii::Device device{ physical_device, device_create_info };
-    vk::raii::Queue const graphics_queue{ device.getQueue(queue_family_index, 0) };
+    vk::raii::Queue const graphics_queue{ device.getQueue(graphics_queue_family_index, 0) };
+    vk::raii::Queue const present_queue{ device.getQueue(present_queue_family_index, 0) };
 
     auto* const renderer{ SDL_CreateRenderer(window, nullptr) };
     if (!renderer)
