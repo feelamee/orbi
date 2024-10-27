@@ -176,6 +176,19 @@ main()
         }()
     };
 
+    auto const surface{ [&]() -> vk::raii::SurfaceKHR
+                        {
+                            VkSurfaceKHR raw_surface{};
+                            if (!SDL_Vulkan_CreateSurface(window, *instance, nullptr, &raw_surface))
+                            {
+                                throw sdl_error{
+                                    std::format("SDL_Vulkan_CreateSurface failed with: '{}'", SDL_GetError())
+                                };
+                            }
+
+                            return { instance, raw_surface };
+                        }() };
+
     vk::raii::PhysicalDevice const physical_device{ instance.enumeratePhysicalDevices().at(0) };
 
     std::uint32_t const queue_family_index{
