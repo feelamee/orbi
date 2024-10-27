@@ -142,11 +142,13 @@ main()
     instance_create_info.enabledExtensionCount = extensions.size();
     instance_create_info.ppEnabledExtensionNames = extensions.data();
 
+#ifndef NDEBUG
     {
         std::array<char const* const, 1> layers{ "VK_LAYER_KHRONOS_validation" };
         instance_create_info.enabledLayerCount = layers.size();
         instance_create_info.ppEnabledLayerNames = layers.data();
     }
+#endif
 
     vk::raii::Instance instance{ ctx, instance_create_info };
 
