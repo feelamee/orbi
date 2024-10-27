@@ -105,7 +105,7 @@ vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsM
 int
 main()
 {
-    if (0 != SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
     {
         std::cout << std::format("SDL_Init failed with: '{}'", SDL_GetError()) << std::endl;
         return EXIT_FAILURE;
@@ -175,7 +175,7 @@ main()
     }
     auto const destroy_renderer{ scope_exit([&]() { SDL_DestroyRenderer(renderer); }) };
 
-    if (0 != SDL_SetRenderDrawColor(renderer, 37, 5, 200, 255))
+    if (!SDL_SetRenderDrawColor(renderer, 37, 5, 200, 255))
     {
         std::cout << std::format("SDL_SetRenderDrawColor failed with: '{}'", SDL_GetError()) << std::endl;
         return EXIT_FAILURE;
@@ -194,12 +194,12 @@ main()
             }
         }
 
-        if (0 != SDL_RenderClear(renderer))
+        if (!SDL_RenderClear(renderer))
         {
             std::cout << std::format("SDL_RenderClear failed with: '{}'", SDL_GetError()) << std::endl;
         }
 
-        if (0 != SDL_RenderPresent(renderer))
+        if (!SDL_RenderPresent(renderer))
         {
             std::cout << std::format("SDL_RenderPresent failed with: '{}'", SDL_GetError()) << std::endl;
         }
