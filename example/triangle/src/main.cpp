@@ -11,6 +11,7 @@
 #include <functional>
 #include <iostream>
 #include <sstream>
+#include <stdexcept>
 
 template <typename Fn>
 struct scope_exit
@@ -102,21 +103,33 @@ vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsM
     // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 }
 
+struct sdl_error : std::runtime_error
+{
+
+    explicit sdl_error(std::string const& msg)
+        : runtime_error{ msg }
+    {
+    }
+
+    sdl_error(char const* msg)
+        : runtime_error{ msg }
+    {
+    }
+};
+
 int
 main()
 {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
     {
-        std::cout << std::format("SDL_Init failed with: '{}'", SDL_GetError()) << std::endl;
-        return EXIT_FAILURE;
+        throw sdl_error{ std::format("SDL_Init failed with: '{}'", SDL_GetError()) };
     }
     auto const destroy_sdl{ scope_exit([&]() { SDL_Quit(); }) };
 
     auto* const window{ SDL_CreateWindow(app_name, 720, 480, SDL_WINDOW_VULKAN) };
     if (!window)
     {
-        std::cout << std::format("SDL_CreateWindow failed with: '{}'", SDL_GetError()) << std::endl;
-        return EXIT_FAILURE;
+        throw sdl_error{ std::format("SDL_CreateWindow failed with: '{}'", SDL_GetError()) };
     }
     auto const destroy_window{ scope_exit([&]() { SDL_DestroyWindow(window); }) };
 
@@ -129,9 +142,7 @@ main()
         SDL_Vulkan_GetInstanceExtensions(&instance_create_info.enabledExtensionCount);
     if (!extensions_c_array)
     {
-        std::cout << std::format("SDL_Vulkan_GetInstanceExtensions failed with: '{}'", SDL_GetError())
-                  << std::endl;
-        return EXIT_FAILURE;
+        throw sdl_error{ std::format("SDL_Vulkan_GetInstanceExtensions failed with: '{}'", SDL_GetError()) };
     }
 
     std::vector<char const*> extensions{ extensions_c_array,
@@ -198,15 +209,13 @@ main()
     auto* const renderer{ SDL_CreateRenderer(window, nullptr) };
     if (!renderer)
     {
-        std::cout << std::format("SDL_CreateRenderer failed with: '{}'", SDL_GetError()) << std::endl;
-        return EXIT_FAILURE;
+        throw sdl_error{ std::format("SDL_CreateRenderer failed with: '{}'", SDL_GetError()) };
     }
     auto const destroy_renderer{ scope_exit([&]() { SDL_DestroyRenderer(renderer); }) };
 
     if (!SDL_SetRenderDrawColor(renderer, 37, 5, 200, 255))
     {
-        std::cout << std::format("SDL_SetRenderDrawColor failed with: '{}'", SDL_GetError()) << std::endl;
-        return EXIT_FAILURE;
+        throw sdl_error{ std::format("SDL_SetRenderDrawColor failed with: '{}'", SDL_GetError()) };
     }
 
     bool running{ true };
