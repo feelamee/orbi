@@ -120,9 +120,9 @@ main()
     }
     auto const destroy_window{ scope_exit([&]() { SDL_DestroyWindow(window); }) };
 
-    vk::raii::Context ctx;
-    vk::ApplicationInfo application_info(app_name, vk::makeApiVersion(0, 0, 1, 0), engine_name,
-                                         vk::makeApiVersion(0, 0, 1, 0), VK_API_VERSION_1_3);
+    vk::raii::Context const ctx;
+    vk::ApplicationInfo const application_info(app_name, vk::makeApiVersion(0, 0, 1, 0), engine_name,
+                                               vk::makeApiVersion(0, 0, 1, 0), VK_API_VERSION_1_3);
     vk::InstanceCreateInfo instance_create_info({}, &application_info);
 
     auto const* const extensions_c_array =
@@ -144,15 +144,15 @@ main()
 
 #ifndef NDEBUG
     {
-        std::array<char const* const, 1> layers{ "VK_LAYER_KHRONOS_validation" };
+        std::array<char const* const, 1> const layers{ "VK_LAYER_KHRONOS_validation" };
         instance_create_info.enabledLayerCount = layers.size();
         instance_create_info.ppEnabledLayerNames = layers.data();
     }
 #endif
 
-    vk::raii::Instance instance{ ctx, instance_create_info };
+    vk::raii::Instance const instance{ ctx, instance_create_info };
 
-    auto debug_utils_messenger{
+    auto const debug_utils_messenger{
         [&]() -> vk::raii::DebugUtilsMessengerEXT
         {
             using severity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
@@ -167,9 +167,9 @@ main()
         }()
     };
 
-    vk::raii::PhysicalDevice physical_device{ instance.enumeratePhysicalDevices().at(0) };
+    vk::raii::PhysicalDevice const physical_device{ instance.enumeratePhysicalDevices().at(0) };
 
-    std::uint32_t queue_family_index{
+    std::uint32_t const queue_family_index{
         [&]
         {
             auto const queue_families{ physical_device.getQueueFamilyProperties() };
