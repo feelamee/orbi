@@ -192,7 +192,8 @@ main()
                                                    layers.data()
 #endif
     };
-    vk::raii::Device const device{ physical_device, device_create_info };
+    vk::raii::Device device{ physical_device, device_create_info };
+    vk::raii::Queue const graphics_queue{ device.getQueue(queue_family_index, 0) };
 
     auto* const renderer{ SDL_CreateRenderer(window, nullptr) };
     if (!renderer)
