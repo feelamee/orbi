@@ -224,7 +224,10 @@ main()
         }()
     };
 
-    std::set const unique_queue_families{ graphics_queue_family_index, present_queue_family_index };
+    std::vector unique_queue_families{ graphics_queue_family_index, present_queue_family_index };
+    std::ranges::sort(unique_queue_families);
+    auto const [first, last] = std::ranges::unique(unique_queue_families);
+    unique_queue_families.erase(first, last);
 
     float const queue_priority{ 1 };
     std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
@@ -233,17 +236,63 @@ main()
         queue_create_infos.emplace_back(vk::DeviceQueueCreateFlags{}, qf, 1, &queue_priority);
     }
 
+    std::array<char const* const, 1> const device_extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+
     vk::DeviceCreateInfo const device_create_info{ {},
                                                    static_cast<std::uint32_t>(queue_create_infos.size()),
                                                    queue_create_infos.data(),
 #ifndef NDEBUG
                                                    layers.size(),
-                                                   layers.data()
+                                                   layers.data(),
 #endif
+                                                   device_extensions.size(),
+                                                   device_extensions.data()
+
     };
     vk::raii::Device device{ physical_device, device_create_info };
+
     vk::raii::Queue const graphics_queue{ device.getQueue(graphics_queue_family_index, 0) };
     vk::raii::Queue const present_queue{ device.getQueue(present_queue_family_index, 0) };
+
+    auto const surface_capabilities{ physical_device.getSurfaceCapabilitiesKHR(*surface) };
+    std::vector const surface_formats{ physical_device.getSurfaceFormatsKHR(*surface) };
+    std::vector const surface_present_modes{ physical_device.getSurfacePresentModesKHR(*surface) };
+
+    assert(!surface_formats.empty() && !surface_present_modes.empty());
+
+    auto const surface_format{ std::ranges::find(surface_formats,
+                                                 vk::SurfaceFormatKHR{ vk::Format::eB8G8R8A8Srgb,
+                                                                       vk::ColorSpaceKHR::eSrgbNonlinear }) };
+    assert(surface_format != end(surface_formats));
+
+    auto const surface_present_mode{ std::ranges::find(surface_present_modes, vk::PresentModeKHR::eFifo) };
+    assert(surface_present_mode != end(surface_present_modes));
+
+    vk::Extent2D const extent{ surface_capabilities.currentExtent };
+
+    vk::raii::SwapchainKHR const swapchain{
+        device,
+        vk::SwapchainCreateInfoKHR{
+            {},
+            *surface,
+            std::clamp(3u, surface_capabilities.minImageCount,
+                       surface_capabilities.maxImageCount == 0 ? std::numeric_limits<std::uint32_t>::max()
+                                                               : surface_capabilities.maxImageCount),
+            surface_format->format,
+            surface_format->colorSpace,
+            extent,
+            1,
+            vk::ImageUsageFlagBits::eColorAttachment,
+            unique_queue_families.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent,
+            static_cast<std::uint32_t>(unique_queue_families.size()),
+            unique_queue_families.data(),
+            surface_capabilities.currentTransform,
+            vk::CompositeAlphaFlagBitsKHR::eOpaque,
+            *surface_present_mode,
+            vk::True }
+    };
+
+    std::vector const images{ swapchain.getImages() };
 
     auto* const renderer{ SDL_CreateRenderer(window, nullptr) };
     if (!renderer)
