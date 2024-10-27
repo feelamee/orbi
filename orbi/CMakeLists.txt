@@ -45,7 +45,7 @@ FetchContent_MakeAvailable(Vulkan-Headers)
 
 # TODO: use `PRIVATE` after adding all api needed in examples to `orbi`
 find_package(Vulkan REQUIRED)
-target_link_libraries(orbi PUBLIC Vulkan::Headers vulkan)
+target_link_libraries(orbi PUBLIC Vulkan::Headers Vulkan::Vulkan)
 
 FetchContent_Declare(
   SDL3
