@@ -167,6 +167,23 @@ main()
         }()
     };
 
+    vk::raii::PhysicalDevice physical_device{ instance.enumeratePhysicalDevices().at(0) };
+
+    std::uint32_t queue_family_index{
+        [&]
+        {
+            auto const queue_families{ physical_device.getQueueFamilyProperties() };
+            auto const it = std::ranges::find_if(queue_families,
+                                                 [](auto const props) {
+                                                     return static_cast<bool>(props.queueFlags &
+                                                                              vk::QueueFlagBits::eGraphics);
+                                                 });
+            assert(it != end(queue_families));
+
+            return static_cast<std::uint32_t>(it - begin(queue_families));
+        }()
+    };
+
     auto* const renderer{ SDL_CreateRenderer(window, nullptr) };
     if (!renderer)
     {
