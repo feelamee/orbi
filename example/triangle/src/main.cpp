@@ -143,11 +143,9 @@ main()
     instance_create_info.ppEnabledExtensionNames = extensions.data();
 
 #ifndef NDEBUG
-    {
-        std::array<char const* const, 1> const layers{ "VK_LAYER_KHRONOS_validation" };
-        instance_create_info.enabledLayerCount = layers.size();
-        instance_create_info.ppEnabledLayerNames = layers.data();
-    }
+    std::array<char const* const, 1> const layers{ "VK_LAYER_KHRONOS_validation" };
+    instance_create_info.enabledLayerCount = layers.size();
+    instance_create_info.ppEnabledLayerNames = layers.data();
 #endif
 
     vk::raii::Instance const instance{ ctx, instance_create_info };
@@ -186,7 +184,15 @@ main()
 
     float const queue_priority{ 1 };
     vk::DeviceQueueCreateInfo const queue_create_info{ {}, queue_family_index, 1, &queue_priority };
-    vk::raii::Device const device{ physical_device, vk::DeviceCreateInfo{ {}, 1, &queue_create_info } };
+    vk::DeviceCreateInfo const device_create_info{ {},
+                                                   1,
+                                                   &queue_create_info,
+#ifndef NDEBUG
+                                                   layers.size(),
+                                                   layers.data()
+#endif
+    };
+    vk::raii::Device const device{ physical_device, device_create_info };
 
     auto* const renderer{ SDL_CreateRenderer(window, nullptr) };
     if (!renderer)
