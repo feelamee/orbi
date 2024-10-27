@@ -184,6 +184,10 @@ main()
         }()
     };
 
+    float const queue_priority{ 1 };
+    vk::DeviceQueueCreateInfo const queue_create_info{ {}, queue_family_index, 1, &queue_priority };
+    vk::raii::Device const device{ physical_device, vk::DeviceCreateInfo{ {}, 1, &queue_create_info } };
+
     auto* const renderer{ SDL_CreateRenderer(window, nullptr) };
     if (!renderer)
     {
