@@ -26,6 +26,7 @@ jobs:
         -C "${{github.workspace}}/cmake/common.cmake"
         -DCMAKE_BUILD_TYPE="${{env.BUILD_TYPE}}"
         -DORBI_PEDANTIC=ON
+        -DSDL_UNIX_CONSOLE_BUILD=ON
 
     - name: build
       run: cmake --build "${{github.workspace}}/build" -j
