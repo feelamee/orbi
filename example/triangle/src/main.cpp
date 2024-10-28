@@ -402,14 +402,26 @@ main()
                                                       {}, {},
                                                       1,  &attachment_reference };
 
+    vk::SubpassDependency const subpass_dependency{ vk::SubpassExternal,
+                                                    0,
+                                                    vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                                                    vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                                                    vk::AccessFlagBits::eNone,
+                                                    vk::AccessFlagBits::eColorAttachmentWrite };
+
     vk::raii::RenderPass const render_pass{
-        device, vk::RenderPassCreateInfo{ {}, 1, &attachment_description, 1, &subpass_description }
+        device, vk::RenderPassCreateInfo{ {}, 1, &attachment_description, 1, &subpass_description, 1, &subpass_dependency }
     };
 
     vk::PipelineMultisampleStateCreateInfo const multisample_state_create_info{ {},
                                                                                 vk::SampleCountFlagBits::e1,
                                                                                 vk::False,
                                                                                 1 };
+
+    std::array const dynamic_states{ vk::DynamicState::eViewport, vk::DynamicState::eScissor };
+    vk::PipelineDynamicStateCreateInfo const dynamic_state_create_info{ {},
+                                                                        dynamic_states.size(),
+                                                                        dynamic_states.data() };
 
     vk::raii::Pipeline const pipeline{ device, nullptr,
                                        vk::GraphicsPipelineCreateInfo{ {},
@@ -423,7 +435,7 @@ main()
                                                                        &multisample_state_create_info,
                                                                        {},
                                                                        &color_blend_state_create_info,
-                                                                       {},
+                                                                       &dynamic_state_create_info,
                                                                        *layout,
                                                                        *render_pass,
                                                                        0 } };
@@ -436,19 +448,31 @@ main()
                 device, vk::FramebufferCreateInfo{ {}, render_pass, 1, &*view, extent.width, extent.height, 1 }
             };
         }) };
-    std::vector framebuffers(begin(frame_buffers_range), end(frame_buffers_range));
+    std::vector const frame_buffers(begin(frame_buffers_range), end(frame_buffers_range));
 
-    auto* const renderer{ SDL_CreateRenderer(window, nullptr) };
-    if (!renderer)
-    {
-        throw sdl_error{ std::format("SDL_CreateRenderer failed with: '{}'", SDL_GetError()) };
-    }
-    auto const destroy_renderer{ scope_exit([&]() { SDL_DestroyRenderer(renderer); }) };
+    vk::raii::CommandPool const command_pool{
+        device, vk::CommandPoolCreateInfo{ vk::CommandPoolCreateFlagBits::eResetCommandBuffer, graphics_queue_family_index }
+    };
 
-    if (!SDL_SetRenderDrawColor(renderer, 37, 5, 200, 255))
-    {
-        throw sdl_error{ std::format("SDL_SetRenderDrawColor failed with: '{}'", SDL_GetError()) };
-    }
+    std::vector const command_buffers{ device.allocateCommandBuffers(
+        vk::CommandBufferAllocateInfo{ command_pool, vk::CommandBufferLevel::ePrimary, 1 }) };
+    auto const& command_buffer{ command_buffers.at(0) };
+
+    // auto* const renderer{ SDL_CreateRenderer(window, nullptr) };
+    // if (!renderer)
+    // {
+    //     throw sdl_error{ std::format("SDL_CreateRenderer failed with: '{}'", SDL_GetError()) };
+    // }
+    // auto const destroy_renderer{ scope_exit([&]() { SDL_DestroyRenderer(renderer); }) };
+
+    // if (!SDL_SetRenderDrawColor(renderer, 37, 5, 200, 255))
+    // {
+    //     throw sdl_error{ std::format("SDL_SetRenderDrawColor failed with: '{}'", SDL_GetError()) };
+    // }
+
+    vk::raii::Semaphore const image_available_semaphore{ device, vk::SemaphoreCreateInfo{} };
+    vk::raii::Semaphore const render_finish_semaphore{ device, vk::SemaphoreCreateInfo{} };
+    vk::raii::Fence const in_flight_fence{ device, vk::FenceCreateInfo{ vk::FenceCreateFlagBits::eSignaled } };
 
     bool running{ true };
     while (running)
@@ -463,15 +487,49 @@ main()
             }
         }
 
-        if (!SDL_RenderClear(renderer))
-        {
-            std::cout << std::format("SDL_RenderClear failed with: '{}'", SDL_GetError()) << std::endl;
-        }
+        auto constexpr timeout{ std::numeric_limits<std::uint64_t>::max() };
+        assert(vk::Result::eSuccess == device.waitForFences(*in_flight_fence, vk::True, timeout));
+        device.resetFences(*in_flight_fence);
 
-        if (!SDL_RenderPresent(renderer))
-        {
-            std::cout << std::format("SDL_RenderPresent failed with: '{}'", SDL_GetError()) << std::endl;
-        }
+        auto const [result, image_index]{ swapchain.acquireNextImage(timeout, image_available_semaphore) };
+        assert(vk::Result::eSuccess == result);
+
+        command_buffer.reset();
+
+        command_buffer.begin(vk::CommandBufferBeginInfo{});
+
+        vk::ClearValue const color{ { 37, 5, 200, 255 } };
+
+        command_buffer.beginRenderPass(vk::RenderPassBeginInfo{ render_pass, frame_buffers[image_index],
+                                                                vk::Rect2D{ { 0, 0 }, extent }, 1, &color },
+                                       vk::SubpassContents::eInline);
+
+        command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
+        command_buffer.setViewport(0, viewport);
+        command_buffer.setScissor(0, scissor);
+        command_buffer.draw(3, 1, 0, 0);
+
+        command_buffer.endRenderPass();
+        command_buffer.end();
+
+        vk::PipelineStageFlags const stage_flag{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
+        graphics_queue.submit(vk::SubmitInfo{ 1, &*image_available_semaphore, &stage_flag, 1,
+                                              &*command_buffer, 1, &*render_finish_semaphore });
+
+        assert(vk::Result::eSuccess == present_queue.presentKHR(vk::PresentInfoKHR{
+                                           1, &*render_finish_semaphore, 1, &*swapchain, &image_index }));
+        // device.acquireNextImage(vk::AcquireNextImageInfoKHR{ *swapchain, timeout,
+        //                                                      image_available_semaphore, nullptr, 0 });
+
+        // if (!SDL_RenderClear(renderer))
+        // {
+        //     std::cout << std::format("SDL_RenderClear failed with: '{}'", SDL_GetError()) << std::endl;
+        // }
+
+        // if (!SDL_RenderPresent(renderer))
+        // {
+        //     std::cout << std::format("SDL_RenderPresent failed with: '{}'", SDL_GetError()) << std::endl;
+        // }
     }
 
     return EXIT_SUCCESS;
