@@ -330,6 +330,99 @@ main()
     auto const vertex_shader_bytecode{ read_file(res_dir / "triangle.vert.spv") };
     auto const fragment_shader_bytecode{ read_file(res_dir / "triangle.frag.spv") };
 
+    vk::raii::ShaderModule const vertex_shader{
+        device,
+        vk::ShaderModuleCreateInfo{ {},
+                                    vertex_shader_bytecode.size(),
+                                    reinterpret_cast<std::uint32_t const*>(vertex_shader_bytecode.data()) }
+    };
+
+    vk::raii::ShaderModule const fragment_shader{
+        device,
+        vk::ShaderModuleCreateInfo{ {},
+                                    fragment_shader_bytecode.size(),
+                                    reinterpret_cast<std::uint32_t const*>(fragment_shader_bytecode.data()) }
+    };
+
+    std::array const shader_stage_create_infos{
+        vk::PipelineShaderStageCreateInfo{ {}, vk::ShaderStageFlagBits::eVertex, vertex_shader, "main" },
+        vk::PipelineShaderStageCreateInfo{ {}, vk::ShaderStageFlagBits::eFragment, fragment_shader, "main" },
+    };
+
+    vk::PipelineVertexInputStateCreateInfo const vertex_input_state_create_info{};
+    vk::PipelineInputAssemblyStateCreateInfo const input_assembly_state_create_info{ {}, vk::PrimitiveTopology::eTriangleList };
+
+    vk::Viewport const viewport{
+        0, 0, static_cast<float>(extent.width), static_cast<float>(extent.height), 0, 1
+    };
+
+    vk::Rect2D const scissor{ { 0, 0 }, extent };
+
+    vk::PipelineViewportStateCreateInfo const viewport_state_create_info{ {}, 1, &viewport, 1, &scissor };
+
+    vk::PipelineRasterizationStateCreateInfo const rasterization_state_create_info{ {},
+                                                                                    vk::False,
+                                                                                    vk::True,
+                                                                                    vk::PolygonMode::eFill,
+                                                                                    vk::CullModeFlagBits::eBack,
+                                                                                    vk::FrontFace::eClockwise,
+                                                                                    vk::False,
+                                                                                    0,
+                                                                                    0,
+                                                                                    0,
+                                                                                    1 };
+
+    vk::PipelineColorBlendAttachmentState const color_blend_attachment_state{
+        vk::True,          vk::BlendFactor::eSrcAlpha, vk::BlendFactor::eOneMinusDstAlpha,
+        vk::BlendOp::eAdd, vk::BlendFactor::eOne,      vk::BlendFactor::eZero,
+        vk::BlendOp::eAdd
+    };
+
+    vk::PipelineColorBlendStateCreateInfo const color_blend_state_create_info{ {},
+                                                                               vk::False,
+                                                                               vk::LogicOp::eCopy,
+                                                                               1,
+                                                                               &color_blend_attachment_state };
+
+    vk::raii::PipelineLayout const layout{ device, vk::PipelineLayoutCreateInfo{} };
+
+    vk::AttachmentDescription const attachment_description{ {},
+                                                            surface_format->format,
+                                                            vk::SampleCountFlagBits::e1,
+                                                            vk::AttachmentLoadOp::eClear,
+                                                            vk::AttachmentStoreOp::eStore,
+                                                            {},
+                                                            {},
+                                                            vk::ImageLayout::eUndefined,
+                                                            vk::ImageLayout::ePresentSrcKHR };
+
+    vk::AttachmentReference const attachment_reference{ 0, vk::ImageLayout::eColorAttachmentOptimal };
+
+    vk::SubpassDescription const subpass_description{ {}, vk::PipelineBindPoint::eGraphics,
+                                                      {}, {},
+                                                      1,  &attachment_reference };
+
+    vk::raii::RenderPass const render_pass{
+        device, vk::RenderPassCreateInfo{ {}, 1, &attachment_description, 1, &subpass_description }
+    };
+
+    vk::raii::Pipeline const pipeline{ device, nullptr,
+                                       vk::GraphicsPipelineCreateInfo{ {},
+                                                                       shader_stage_create_infos.size(),
+                                                                       shader_stage_create_infos.data(),
+                                                                       &vertex_input_state_create_info,
+                                                                       &input_assembly_state_create_info,
+                                                                       {},
+                                                                       &viewport_state_create_info,
+                                                                       &rasterization_state_create_info,
+                                                                       {},
+                                                                       {},
+                                                                       &color_blend_state_create_info,
+                                                                       {},
+                                                                       *layout,
+                                                                       *render_pass,
+                                                                       0 } };
+
     auto* const renderer{ SDL_CreateRenderer(window, nullptr) };
     if (!renderer)
     {
