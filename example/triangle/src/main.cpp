@@ -2,6 +2,8 @@
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
 
+#include <ranges>
+
 // workaround for bug https://github.com/libsdl-org/SDL/issues/11328
 #undef VK_DEFINE_NON_DISPATCHABLE_HANDLE
 #include <vulkan/vulkan_raii.hpp>
@@ -293,6 +295,21 @@ main()
     };
 
     std::vector const images{ swapchain.getImages() };
+
+    auto const image_views_range{
+        std::views::transform(images,
+                              [&](auto const& image)
+                              {
+                                  return device.createImageView(vk::ImageViewCreateInfo{
+                                      {},
+                                      image,
+                                      vk::ImageViewType::e2D,
+                                      surface_format->format,
+                                      vk::ComponentMapping{},
+                                      vk::ImageSubresourceRange{ vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 } });
+                              })
+    };
+    std::vector const image_views(begin(image_views_range), end(image_views_range));
 
     auto* const renderer{ SDL_CreateRenderer(window, nullptr) };
     if (!renderer)
