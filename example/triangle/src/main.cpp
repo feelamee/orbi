@@ -362,7 +362,7 @@ main()
 
     vk::PipelineRasterizationStateCreateInfo const rasterization_state_create_info{ {},
                                                                                     vk::False,
-                                                                                    vk::True,
+                                                                                    vk::False,
                                                                                     vk::PolygonMode::eFill,
                                                                                     vk::CullModeFlagBits::eBack,
                                                                                     vk::FrontFace::eClockwise,
@@ -406,6 +406,11 @@ main()
         device, vk::RenderPassCreateInfo{ {}, 1, &attachment_description, 1, &subpass_description }
     };
 
+    vk::PipelineMultisampleStateCreateInfo const multisample_state_create_info{ {},
+                                                                                vk::SampleCountFlagBits::e1,
+                                                                                vk::False,
+                                                                                1 };
+
     vk::raii::Pipeline const pipeline{ device, nullptr,
                                        vk::GraphicsPipelineCreateInfo{ {},
                                                                        shader_stage_create_infos.size(),
@@ -415,7 +420,7 @@ main()
                                                                        {},
                                                                        &viewport_state_create_info,
                                                                        &rasterization_state_create_info,
-                                                                       {},
+                                                                       &multisample_state_create_info,
                                                                        {},
                                                                        &color_blend_state_create_info,
                                                                        {},
