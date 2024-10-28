@@ -428,6 +428,16 @@ main()
                                                                        *render_pass,
                                                                        0 } };
 
+    auto const frame_buffers_range{ std::views::transform(
+        image_views,
+        [&](auto const& view)
+        {
+            return vk::raii::Framebuffer{
+                device, vk::FramebufferCreateInfo{ {}, render_pass, 1, &*view, extent.width, extent.height, 1 }
+            };
+        }) };
+    std::vector framebuffers(begin(frame_buffers_range), end(frame_buffers_range));
+
     auto* const renderer{ SDL_CreateRenderer(window, nullptr) };
     if (!renderer)
     {
