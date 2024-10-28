@@ -458,38 +458,25 @@ main()
         vk::CommandBufferAllocateInfo{ command_pool, vk::CommandBufferLevel::ePrimary, 1 }) };
     auto const& command_buffer{ command_buffers.at(0) };
 
-    // auto* const renderer{ SDL_CreateRenderer(window, nullptr) };
-    // if (!renderer)
-    // {
-    //     throw sdl_error{ std::format("SDL_CreateRenderer failed with: '{}'", SDL_GetError()) };
-    // }
-    // auto const destroy_renderer{ scope_exit([&]() { SDL_DestroyRenderer(renderer); }) };
+    vk::raii::Semaphore image_available_semaphore{ device, vk::SemaphoreCreateInfo{} };
+    vk::raii::Semaphore render_finish_semaphore{ device, vk::SemaphoreCreateInfo{} };
+    vk::raii::Fence fence{ device, vk::FenceCreateInfo{ vk::FenceCreateFlagBits::eSignaled } };
 
-    // if (!SDL_SetRenderDrawColor(renderer, 37, 5, 200, 255))
-    // {
-    //     throw sdl_error{ std::format("SDL_SetRenderDrawColor failed with: '{}'", SDL_GetError()) };
-    // }
-
-    vk::raii::Semaphore const image_available_semaphore{ device, vk::SemaphoreCreateInfo{} };
-    vk::raii::Semaphore const render_finish_semaphore{ device, vk::SemaphoreCreateInfo{} };
-    vk::raii::Fence const in_flight_fence{ device, vk::FenceCreateInfo{ vk::FenceCreateFlagBits::eSignaled } };
-
-    bool running{ true };
-    while (running)
+    while (true)
     {
+        auto constexpr timeout{ 3'000'000'000 /* std::numeric_limits<std::uint64_t>::max() */ };
+        assert(vk::Result::eSuccess == device.waitForFences(*fence, vk::True, timeout));
+        device.resetFences(*fence);
+
         SDL_Event ev{};
         while (SDL_PollEvent(&ev))
         {
             switch (ev.type)
             {
             case SDL_EVENT_QUIT:
-                running = false;
+                return EXIT_SUCCESS;
             }
         }
-
-        auto constexpr timeout{ std::numeric_limits<std::uint64_t>::max() };
-        assert(vk::Result::eSuccess == device.waitForFences(*in_flight_fence, vk::True, timeout));
-        device.resetFences(*in_flight_fence);
 
         auto const [result, image_index]{ swapchain.acquireNextImage(timeout, image_available_semaphore) };
         assert(vk::Result::eSuccess == result);
@@ -514,22 +501,11 @@ main()
 
         vk::PipelineStageFlags const stage_flag{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
         graphics_queue.submit(vk::SubmitInfo{ 1, &*image_available_semaphore, &stage_flag, 1,
-                                              &*command_buffer, 1, &*render_finish_semaphore });
+                                              &*command_buffer, 1, &*render_finish_semaphore },
+                              fence);
 
         assert(vk::Result::eSuccess == present_queue.presentKHR(vk::PresentInfoKHR{
                                            1, &*render_finish_semaphore, 1, &*swapchain, &image_index }));
-        // device.acquireNextImage(vk::AcquireNextImageInfoKHR{ *swapchain, timeout,
-        //                                                      image_available_semaphore, nullptr, 0 });
-
-        // if (!SDL_RenderClear(renderer))
-        // {
-        //     std::cout << std::format("SDL_RenderClear failed with: '{}'", SDL_GetError()) << std::endl;
-        // }
-
-        // if (!SDL_RenderPresent(renderer))
-        // {
-        //     std::cout << std::format("SDL_RenderPresent failed with: '{}'", SDL_GetError()) << std::endl;
-        // }
     }
 
     return EXIT_SUCCESS;
