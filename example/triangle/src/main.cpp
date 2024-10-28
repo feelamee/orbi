@@ -2,16 +2,17 @@
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
 
-#include <ranges>
-
 // workaround for bug https://github.com/libsdl-org/SDL/issues/11328
 #undef VK_DEFINE_NON_DISPATCHABLE_HANDLE
 #include <vulkan/vulkan_raii.hpp>
 
 #include <cstdlib>
+#include <filesystem>
 #include <format>
+#include <fstream>
 #include <functional>
 #include <iostream>
+#include <ranges>
 #include <sstream>
 #include <stdexcept>
 
@@ -118,6 +119,20 @@ struct sdl_error : std::runtime_error
     {
     }
 };
+
+std::vector<std::byte>
+read_file(std::filesystem::path const& filename)
+{
+    std::ifstream file(filename, std::ios::binary);
+    file.exceptions(std::ifstream::badbit);
+
+    auto const size = std::filesystem::file_size(filename);
+    std::vector<std::byte> buffer{ size };
+
+    file.read(reinterpret_cast<std::ifstream::char_type*>(buffer.data()), static_cast<std::streamsize>(size));
+
+    return buffer;
+}
 
 int
 main()
@@ -310,6 +325,10 @@ main()
                               })
     };
     std::vector const image_views(begin(image_views_range), end(image_views_range));
+
+    auto const res_dir{ std::filesystem::current_path() / "example/triangle/res" };
+    auto const vertex_shader_bytecode{ read_file(res_dir / "triangle.vert.spv") };
+    auto const fragment_shader_bytecode{ read_file(res_dir / "triangle.frag.spv") };
 
     auto* const renderer{ SDL_CreateRenderer(window, nullptr) };
     if (!renderer)
