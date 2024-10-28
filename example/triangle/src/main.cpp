@@ -372,11 +372,11 @@ main()
                                                                                     0,
                                                                                     1 };
 
-    vk::PipelineColorBlendAttachmentState const color_blend_attachment_state{
-        vk::True,          vk::BlendFactor::eSrcAlpha, vk::BlendFactor::eOneMinusDstAlpha,
-        vk::BlendOp::eAdd, vk::BlendFactor::eOne,      vk::BlendFactor::eZero,
-        vk::BlendOp::eAdd
-    };
+    vk::PipelineColorBlendAttachmentState color_blend_attachment_state{};
+    color_blend_attachment_state.colorWriteMask =
+        vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+        vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
+    color_blend_attachment_state.blendEnable = vk::False;
 
     vk::PipelineColorBlendStateCreateInfo const color_blend_state_create_info{ {},
                                                                                vk::False,
