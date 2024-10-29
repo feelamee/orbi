@@ -4,8 +4,6 @@
 
 // workaround for bug https://github.com/libsdl-org/SDL/issues/11328
 #undef VK_DEFINE_NON_DISPATCHABLE_HANDLE
-#define VULKAN_HPP_NO_CONSTRUCTORS
-#define VULKAN_HPP_NO_SPACESHIP_OPERATOR
 #include <vulkan/vulkan_raii.hpp>
 
 #include <cstdlib>
