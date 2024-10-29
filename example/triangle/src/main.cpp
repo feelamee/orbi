@@ -4,6 +4,8 @@
 
 // workaround for bug https://github.com/libsdl-org/SDL/issues/11328
 #undef VK_DEFINE_NON_DISPATCHABLE_HANDLE
+#define VULKAN_HPP_NO_CONSTRUCTORS
+#define VULKAN_HPP_NO_SPACESHIP_OPERATOR
 #include <vulkan/vulkan_raii.hpp>
 
 #include <cstdlib>
@@ -151,9 +153,12 @@ main()
     auto const destroy_window{ scope_exit([&]() { SDL_DestroyWindow(window); }) };
 
     vk::raii::Context const ctx;
-    vk::ApplicationInfo const application_info(app_name, vk::makeApiVersion(0, 0, 1, 0), engine_name,
-                                               vk::makeApiVersion(0, 0, 1, 0), VK_API_VERSION_1_3);
-    vk::InstanceCreateInfo instance_create_info({}, &application_info);
+    vk::ApplicationInfo const application_info{ .pApplicationName = app_name,
+                                                .applicationVersion = vk::makeApiVersion(0, 0, 1, 0),
+                                                .pEngineName = engine_name,
+                                                .engineVersion = vk::makeApiVersion(0, 0, 1, 0),
+                                                .apiVersion = VK_API_VERSION_1_3 };
+    vk::InstanceCreateInfo instance_create_info{ .pApplicationInfo = &application_info };
 
     auto const* const extensions_c_array =
         SDL_Vulkan_GetInstanceExtensions(&instance_create_info.enabledExtensionCount);
@@ -187,7 +192,9 @@ main()
             using type = vk::DebugUtilsMessageTypeFlagBitsEXT;
             auto const type_flags(type::eGeneral | type::ePerformance | type::eValidation);
 
-            vk::DebugUtilsMessengerCreateInfoEXT create_info({}, severity_flags, type_flags, &vk_debug_callback);
+            vk::DebugUtilsMessengerCreateInfoEXT create_info{ .messageSeverity = severity_flags,
+                                                              .messageType = type_flags,
+                                                              .pfnUserCallback = &vk_debug_callback };
 
             return { instance, create_info };
         }()
@@ -250,20 +257,20 @@ main()
     std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
     for (auto const& qf : unique_queue_families)
     {
-        queue_create_infos.emplace_back(vk::DeviceQueueCreateFlags{}, qf, 1, &queue_priority);
+        queue_create_infos.push_back({ .queueFamilyIndex = qf, .queueCount = 1, .pQueuePriorities = &queue_priority });
     }
 
     std::array<char const* const, 1> const device_extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-    vk::DeviceCreateInfo const device_create_info{ {},
-                                                   static_cast<std::uint32_t>(queue_create_infos.size()),
-                                                   queue_create_infos.data(),
+    vk::DeviceCreateInfo const device_create_info{
+        .queueCreateInfoCount = static_cast<std::uint32_t>(queue_create_infos.size()),
+        .pQueueCreateInfos = queue_create_infos.data(),
 #ifndef NDEBUG
-                                                   layers.size(),
-                                                   layers.data(),
+        .enabledLayerCount = layers.size(),
+        .ppEnabledLayerNames = layers.data(),
 #endif
-                                                   device_extensions.size(),
-                                                   device_extensions.data()
+        .enabledExtensionCount = device_extensions.size(),
+        .ppEnabledExtensionNames = device_extensions.data()
 
     };
     vk::raii::Device device{ physical_device, device_create_info };
@@ -289,24 +296,23 @@ main()
 
     vk::raii::SwapchainKHR const swapchain{
         device,
-        vk::SwapchainCreateInfoKHR{
-            {},
-            *surface,
-            std::clamp(3u, surface_capabilities.minImageCount,
-                       surface_capabilities.maxImageCount == 0 ? std::numeric_limits<std::uint32_t>::max()
-                                                               : surface_capabilities.maxImageCount),
-            surface_format->format,
-            surface_format->colorSpace,
-            extent,
-            1,
-            vk::ImageUsageFlagBits::eColorAttachment,
-            unique_queue_families.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent,
-            static_cast<std::uint32_t>(unique_queue_families.size()),
-            unique_queue_families.data(),
-            surface_capabilities.currentTransform,
-            vk::CompositeAlphaFlagBitsKHR::eOpaque,
-            *surface_present_mode,
-            vk::True }
+        { .surface = *surface,
+          .minImageCount = std::clamp(3u, surface_capabilities.minImageCount,
+                                      surface_capabilities.maxImageCount == 0
+                                          ? std::numeric_limits<std::uint32_t>::max()
+                                          : surface_capabilities.maxImageCount),
+          .imageFormat = surface_format->format,
+          .imageColorSpace = surface_format->colorSpace,
+          .imageExtent = extent,
+          .imageArrayLayers = 1,
+          .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+          .imageSharingMode = unique_queue_families.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent,
+          .queueFamilyIndexCount = static_cast<std::uint32_t>(unique_queue_families.size()),
+          .pQueueFamilyIndices = unique_queue_families.data(),
+          .preTransform = surface_capabilities.currentTransform,
+          .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+          .presentMode = *surface_present_mode,
+          .clipped = vk::True }
     };
 
     std::vector const images{ swapchain.getImages() };
@@ -315,13 +321,15 @@ main()
         std::views::transform(images,
                               [&](auto const& image)
                               {
-                                  return device.createImageView(vk::ImageViewCreateInfo{
-                                      {},
-                                      image,
-                                      vk::ImageViewType::e2D,
-                                      surface_format->format,
-                                      vk::ComponentMapping{},
-                                      vk::ImageSubresourceRange{ vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1 } });
+                                  return device.createImageView(
+                                      { .image = image,
+                                        .viewType = vk::ImageViewType::e2D,
+                                        .format = surface_format->format,
+                                        .subresourceRange = { .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                              .baseMipLevel = 0,
+                                                              .levelCount = 1,
+                                                              .baseArrayLayer = 0,
+                                                              .layerCount = 1 } });
                               })
     };
     std::vector const image_views(begin(image_views_range), end(image_views_range));
@@ -330,137 +338,153 @@ main()
     auto const vertex_shader_bytecode{ read_file(res_dir / "triangle.vert.spv") };
     auto const fragment_shader_bytecode{ read_file(res_dir / "triangle.frag.spv") };
 
-    vk::raii::ShaderModule const vertex_shader{
-        device,
-        vk::ShaderModuleCreateInfo{ {},
-                                    vertex_shader_bytecode.size(),
-                                    reinterpret_cast<std::uint32_t const*>(vertex_shader_bytecode.data()) }
-    };
+    vk::raii::ShaderModule const vertex_shader{ device,
+                                                { .codeSize = vertex_shader_bytecode.size(),
+                                                  .pCode = reinterpret_cast<std::uint32_t const*>(
+                                                      vertex_shader_bytecode.data()) } };
 
-    vk::raii::ShaderModule const fragment_shader{
-        device,
-        vk::ShaderModuleCreateInfo{ {},
-                                    fragment_shader_bytecode.size(),
-                                    reinterpret_cast<std::uint32_t const*>(fragment_shader_bytecode.data()) }
-    };
+    vk::raii::ShaderModule const fragment_shader{ device,
+                                                  { .codeSize = fragment_shader_bytecode.size(),
+                                                    .pCode = reinterpret_cast<std::uint32_t const*>(
+                                                        fragment_shader_bytecode.data()) } };
 
     std::array const shader_stage_create_infos{
-        vk::PipelineShaderStageCreateInfo{ {}, vk::ShaderStageFlagBits::eVertex, vertex_shader, "main" },
-        vk::PipelineShaderStageCreateInfo{ {}, vk::ShaderStageFlagBits::eFragment, fragment_shader, "main" },
+        vk::PipelineShaderStageCreateInfo{ .stage = vk::ShaderStageFlagBits::eVertex,
+                                           .module = vertex_shader,
+                                           .pName = "main" },
+        vk::PipelineShaderStageCreateInfo{ .stage = vk::ShaderStageFlagBits::eFragment,
+                                           .module = fragment_shader,
+                                           .pName = "main" },
     };
 
     vk::PipelineVertexInputStateCreateInfo const vertex_input_state_create_info{};
-    vk::PipelineInputAssemblyStateCreateInfo const input_assembly_state_create_info{ {}, vk::PrimitiveTopology::eTriangleList };
-
-    vk::Viewport const viewport{
-        0, 0, static_cast<float>(extent.width), static_cast<float>(extent.height), 0, 1
+    vk::PipelineInputAssemblyStateCreateInfo const input_assembly_state_create_info{
+        .topology = vk::PrimitiveTopology::eTriangleList
     };
 
-    vk::Rect2D const scissor{ { 0, 0 }, extent };
+    vk::Viewport const viewport{ .x = 0,
+                                 .y = 0,
+                                 .width = static_cast<float>(extent.width),
+                                 .height = static_cast<float>(extent.height),
+                                 .minDepth = 0,
+                                 .maxDepth = 1 };
 
-    vk::PipelineViewportStateCreateInfo const viewport_state_create_info{ {}, 1, &viewport, 1, &scissor };
+    vk::Rect2D const scissor{ .offset = { 0, 0 }, .extent = extent };
 
-    vk::PipelineRasterizationStateCreateInfo const rasterization_state_create_info{ {},
-                                                                                    vk::False,
-                                                                                    vk::False,
-                                                                                    vk::PolygonMode::eFill,
-                                                                                    vk::CullModeFlagBits::eBack,
-                                                                                    vk::FrontFace::eClockwise,
-                                                                                    vk::False,
-                                                                                    0,
-                                                                                    0,
-                                                                                    0,
-                                                                                    1 };
+    vk::PipelineViewportStateCreateInfo const viewport_state_create_info{ .viewportCount = 1,
+                                                                          .pViewports = &viewport,
+                                                                          .scissorCount = 1,
+                                                                          .pScissors = &scissor };
 
-    vk::PipelineColorBlendAttachmentState color_blend_attachment_state{};
-    color_blend_attachment_state.colorWriteMask =
-        vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-        vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;
-    color_blend_attachment_state.blendEnable = vk::False;
+    vk::PipelineRasterizationStateCreateInfo const rasterization_state_create_info{
+        .depthClampEnable = vk::False,
+        .rasterizerDiscardEnable = vk::False,
+        .polygonMode = vk::PolygonMode::eFill,
+        .cullMode = vk::CullModeFlagBits::eBack,
+        .frontFace = vk::FrontFace::eClockwise,
+        .depthBiasEnable = vk::False,
+        .depthBiasConstantFactor = 0,
+        .depthBiasClamp = 0,
+        .depthBiasSlopeFactor = 0,
+        .lineWidth = 1
+    };
 
-    vk::PipelineColorBlendStateCreateInfo const color_blend_state_create_info{ {},
-                                                                               vk::False,
-                                                                               vk::LogicOp::eCopy,
-                                                                               1,
-                                                                               &color_blend_attachment_state };
+    vk::PipelineColorBlendAttachmentState const color_blend_attachment_state{
+        .blendEnable = vk::False,
+        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+                          vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA
+    };
+
+    vk::PipelineColorBlendStateCreateInfo const color_blend_state_create_info{ .logicOpEnable = vk::False,
+                                                                               .logicOp = vk::LogicOp::eCopy,
+                                                                               .attachmentCount = 1,
+                                                                               .pAttachments = &color_blend_attachment_state };
 
     vk::raii::PipelineLayout const layout{ device, vk::PipelineLayoutCreateInfo{} };
 
-    vk::AttachmentDescription const attachment_description{ {},
-                                                            surface_format->format,
-                                                            vk::SampleCountFlagBits::e1,
-                                                            vk::AttachmentLoadOp::eClear,
-                                                            vk::AttachmentStoreOp::eStore,
-                                                            {},
-                                                            {},
-                                                            vk::ImageLayout::eUndefined,
-                                                            vk::ImageLayout::ePresentSrcKHR };
+    vk::AttachmentDescription const attachment_description{ .format = surface_format->format,
+                                                            .samples = vk::SampleCountFlagBits::e1,
+                                                            .loadOp = vk::AttachmentLoadOp::eClear,
+                                                            .storeOp = vk::AttachmentStoreOp::eStore,
+                                                            .initialLayout = vk::ImageLayout::eUndefined,
+                                                            .finalLayout = vk::ImageLayout::ePresentSrcKHR };
 
-    vk::AttachmentReference const attachment_reference{ 0, vk::ImageLayout::eColorAttachmentOptimal };
+    vk::AttachmentReference const attachment_reference{ .attachment = 0, .layout = vk::ImageLayout::eColorAttachmentOptimal };
 
-    vk::SubpassDescription const subpass_description{ {}, vk::PipelineBindPoint::eGraphics,
-                                                      {}, {},
-                                                      1,  &attachment_reference };
+    vk::SubpassDescription const subpass_description{ .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+                                                      .colorAttachmentCount = 1,
+                                                      .pColorAttachments = &attachment_reference };
 
-    vk::SubpassDependency const subpass_dependency{ vk::SubpassExternal,
-                                                    0,
-                                                    vk::PipelineStageFlagBits::eColorAttachmentOutput,
-                                                    vk::PipelineStageFlagBits::eColorAttachmentOutput,
-                                                    vk::AccessFlagBits::eNone,
-                                                    vk::AccessFlagBits::eColorAttachmentWrite };
+    vk::SubpassDependency const subpass_dependency{ .srcSubpass = vk::SubpassExternal,
+                                                    .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                                                    .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+                                                    .srcAccessMask = vk::AccessFlagBits::eNone,
+                                                    .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite };
 
-    vk::raii::RenderPass const render_pass{
-        device, vk::RenderPassCreateInfo{ {}, 1, &attachment_description, 1, &subpass_description, 1, &subpass_dependency }
+    vk::raii::RenderPass const render_pass{ device, vk::RenderPassCreateInfo{
+                                                        .attachmentCount = 1,
+                                                        .pAttachments = &attachment_description,
+                                                        .subpassCount = 1,
+                                                        .pSubpasses = &subpass_description,
+                                                        .dependencyCount = 1,
+                                                        .pDependencies = &subpass_dependency } };
+
+    vk::PipelineMultisampleStateCreateInfo const multisample_state_create_info{
+        .rasterizationSamples = vk::SampleCountFlagBits::e1,
+        .sampleShadingEnable = vk::False,
+        .minSampleShading = 1
     };
 
-    vk::PipelineMultisampleStateCreateInfo const multisample_state_create_info{ {},
-                                                                                vk::SampleCountFlagBits::e1,
-                                                                                vk::False,
-                                                                                1 };
-
     std::array const dynamic_states{ vk::DynamicState::eViewport, vk::DynamicState::eScissor };
-    vk::PipelineDynamicStateCreateInfo const dynamic_state_create_info{ {},
-                                                                        dynamic_states.size(),
-                                                                        dynamic_states.data() };
+    vk::PipelineDynamicStateCreateInfo const dynamic_state_create_info{ .dynamicStateCount =
+                                                                            dynamic_states.size(),
+                                                                        .pDynamicStates =
+                                                                            dynamic_states.data() };
 
     vk::raii::Pipeline const pipeline{ device, nullptr,
-                                       vk::GraphicsPipelineCreateInfo{ {},
-                                                                       shader_stage_create_infos.size(),
-                                                                       shader_stage_create_infos.data(),
-                                                                       &vertex_input_state_create_info,
-                                                                       &input_assembly_state_create_info,
-                                                                       {},
-                                                                       &viewport_state_create_info,
-                                                                       &rasterization_state_create_info,
-                                                                       &multisample_state_create_info,
-                                                                       {},
-                                                                       &color_blend_state_create_info,
-                                                                       &dynamic_state_create_info,
-                                                                       *layout,
-                                                                       *render_pass,
-                                                                       0 } };
+                                       vk::GraphicsPipelineCreateInfo{
+                                           .stageCount = shader_stage_create_infos.size(),
+                                           .pStages = shader_stage_create_infos.data(),
+                                           .pVertexInputState = &vertex_input_state_create_info,
+                                           .pInputAssemblyState = &input_assembly_state_create_info,
+                                           .pViewportState = &viewport_state_create_info,
+                                           .pRasterizationState = &rasterization_state_create_info,
+                                           .pMultisampleState = &multisample_state_create_info,
+                                           .pColorBlendState = &color_blend_state_create_info,
+                                           .pDynamicState = &dynamic_state_create_info,
+                                           .layout = *layout,
+                                           .renderPass = *render_pass,
+                                           .subpass = 0 } };
 
-    auto const frame_buffers_range{ std::views::transform(
-        image_views,
-        [&](auto const& view)
-        {
-            return vk::raii::Framebuffer{
-                device, vk::FramebufferCreateInfo{ {}, render_pass, 1, &*view, extent.width, extent.height, 1 }
-            };
-        }) };
+    auto const frame_buffers_range{
+        std::views::transform(image_views,
+                              [&](auto const& view)
+                              {
+                                  return vk::raii::Framebuffer{ device, vk::FramebufferCreateInfo{
+                                                                            .renderPass = render_pass,
+                                                                            .attachmentCount = 1,
+                                                                            .pAttachments = &*view,
+                                                                            .width = extent.width,
+                                                                            .height = extent.height,
+                                                                            .layers = 1 } };
+                              })
+    };
     std::vector const frame_buffers(begin(frame_buffers_range), end(frame_buffers_range));
 
     vk::raii::CommandPool const command_pool{
-        device, vk::CommandPoolCreateInfo{ vk::CommandPoolCreateFlagBits::eResetCommandBuffer, graphics_queue_family_index }
+        device, vk::CommandPoolCreateInfo{ .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+                                           .queueFamilyIndex = graphics_queue_family_index }
     };
 
     std::vector const command_buffers{ device.allocateCommandBuffers(
-        vk::CommandBufferAllocateInfo{ command_pool, vk::CommandBufferLevel::ePrimary, 1 }) };
+        vk::CommandBufferAllocateInfo{ .commandPool = command_pool,
+                                       .level = vk::CommandBufferLevel::ePrimary,
+                                       .commandBufferCount = 1 }) };
     auto const& command_buffer{ command_buffers.at(0) };
 
     vk::raii::Semaphore image_available_semaphore{ device, vk::SemaphoreCreateInfo{} };
     vk::raii::Semaphore render_finish_semaphore{ device, vk::SemaphoreCreateInfo{} };
-    vk::raii::Fence fence{ device, vk::FenceCreateInfo{ vk::FenceCreateFlagBits::eSignaled } };
+    vk::raii::Fence fence{ device, vk::FenceCreateInfo{ .flags = vk::FenceCreateFlagBits::eSignaled } };
 
     while (true)
     {
@@ -485,10 +509,13 @@ main()
 
         command_buffer.begin(vk::CommandBufferBeginInfo{});
 
-        vk::ClearValue const color{ { 37, 5, 200, 255 } };
+        vk::ClearValue const color{ { { { 0.12f, 0.04f, 0.8f, 1.0f } } } };
 
-        command_buffer.beginRenderPass(vk::RenderPassBeginInfo{ render_pass, frame_buffers[image_index],
-                                                                vk::Rect2D{ { 0, 0 }, extent }, 1, &color },
+        command_buffer.beginRenderPass({ .renderPass = render_pass,
+                                         .framebuffer = frame_buffers[image_index],
+                                         .renderArea = vk::Rect2D{ { 0, 0 }, extent },
+                                         .clearValueCount = 1,
+                                         .pClearValues = &color },
                                        vk::SubpassContents::eInline);
 
         command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
@@ -500,12 +527,20 @@ main()
         command_buffer.end();
 
         vk::PipelineStageFlags const stage_flag{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
-        graphics_queue.submit(vk::SubmitInfo{ 1, &*image_available_semaphore, &stage_flag, 1,
-                                              &*command_buffer, 1, &*render_finish_semaphore },
+        graphics_queue.submit(vk::SubmitInfo{ .waitSemaphoreCount = 1,
+                                              .pWaitSemaphores = &*image_available_semaphore,
+                                              .pWaitDstStageMask = &stage_flag,
+                                              .commandBufferCount = 1,
+                                              .pCommandBuffers = &*command_buffer,
+                                              .signalSemaphoreCount = 1,
+                                              .pSignalSemaphores = &*render_finish_semaphore },
                               fence);
 
-        assert(vk::Result::eSuccess == present_queue.presentKHR(vk::PresentInfoKHR{
-                                           1, &*render_finish_semaphore, 1, &*swapchain, &image_index }));
+        assert(vk::Result::eSuccess == present_queue.presentKHR({ .waitSemaphoreCount = 1,
+                                                                  .pWaitSemaphores = &*render_finish_semaphore,
+                                                                  .swapchainCount = 1,
+                                                                  .pSwapchains = &*swapchain,
+                                                                  .pImageIndices = &image_index }));
     }
 
     return EXIT_SUCCESS;
