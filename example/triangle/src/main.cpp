@@ -143,7 +143,7 @@ main()
     }
     auto const destroy_sdl{ scope_exit([&]() { SDL_Quit(); }) };
 
-    auto* const window{ SDL_CreateWindow(app_name, 720, 480, SDL_WINDOW_VULKAN) };
+    auto* const window{ SDL_CreateWindow(app_name, 720, 480, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE) };
     if (!window)
     {
         throw sdl_error{ std::format("SDL_CreateWindow failed with: '{}'", SDL_GetError()) };
@@ -320,28 +320,33 @@ main()
     };
 
     auto const surface_capabilities{ physical_device.getSurfaceCapabilitiesKHR(*surface) };
-    vk::Extent2D const extent{ surface_capabilities.currentExtent };
+    vk::Extent2D extent{ surface_capabilities.currentExtent };
 
-    vk::raii::SwapchainKHR const swapchain{
-        device,
-        { .surface = *surface,
-          .minImageCount = std::clamp(3u, surface_capabilities.minImageCount,
-                                      surface_capabilities.maxImageCount == 0
-                                          ? std::numeric_limits<std::uint32_t>::max()
-                                          : surface_capabilities.maxImageCount),
-          .imageFormat = surface_format.format,
-          .imageColorSpace = surface_format.colorSpace,
-          .imageExtent = extent,
-          .imageArrayLayers = 1,
-          .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
-          .imageSharingMode = unique_queue_families.size() == 1 ? vk::SharingMode::eExclusive : vk::SharingMode::eConcurrent,
-          .queueFamilyIndexCount = static_cast<std::uint32_t>(unique_queue_families.size()),
-          .pQueueFamilyIndices = unique_queue_families.data(),
-          .preTransform = surface_capabilities.currentTransform,
-          .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
-          .presentMode = surface_present_mode,
-          .clipped = vk::True }
+    auto const make_swapchain{
+        [&]() -> vk::raii::SwapchainKHR
+        {
+            return { device,
+                     { .surface = *surface,
+                       .minImageCount = std::clamp(3u, surface_capabilities.minImageCount,
+                                                   surface_capabilities.maxImageCount == 0
+                                                       ? std::numeric_limits<std::uint32_t>::max()
+                                                       : surface_capabilities.maxImageCount),
+                       .imageFormat = surface_format.format,
+                       .imageColorSpace = surface_format.colorSpace,
+                       .imageExtent = extent,
+                       .imageArrayLayers = 1,
+                       .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+                       .imageSharingMode = unique_queue_families.size() == 1 ? vk::SharingMode::eExclusive
+                                                                             : vk::SharingMode::eConcurrent,
+                       .queueFamilyIndexCount = static_cast<std::uint32_t>(unique_queue_families.size()),
+                       .pQueueFamilyIndices = unique_queue_families.data(),
+                       .preTransform = surface_capabilities.currentTransform,
+                       .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+                       .presentMode = surface_present_mode,
+                       .clipped = vk::True } };
+        }
     };
+    vk::raii::SwapchainKHR swapchain{ make_swapchain() };
 
     auto const res_dir{ std::filesystem::current_path() / "example/triangle/res" };
     auto const vertex_shader_bytecode{ read_file(res_dir / "triangle.vert.spv") };
@@ -456,7 +461,7 @@ main()
                                            .renderPass = *render_pass,
                                            .subpass = 0 } };
 
-    std::vector const image_views{
+    auto const make_image_views{
         [&]
         {
             auto const rng =
@@ -476,10 +481,12 @@ main()
                     });
 
             return std::vector(begin(rng), end(rng));
-        }()
+        }
     };
 
-    std::vector const frame_buffers{
+    std::vector image_views{ make_image_views() };
+
+    auto const make_frame_buffers{
         [&]
         {
             auto const rng{ image_views |
@@ -495,8 +502,11 @@ main()
                                 }) };
 
             return std::vector(begin(rng), end(rng));
-        }()
+        }
+
     };
+
+    std::vector frame_buffers{ make_frame_buffers() };
 
     vk::raii::CommandPool const command_pool{
         device, vk::CommandPoolCreateInfo{ .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
@@ -522,15 +532,25 @@ main()
         SDL_Event ev{};
         while (SDL_PollEvent(&ev))
         {
-            switch (ev.type)
+            switch (static_cast<SDL_EventType>(ev.type))
             {
             case SDL_EVENT_QUIT:
                 return EXIT_SUCCESS;
+
+            case SDL_EVENT_WINDOW_RESIZED:
+                extent = physical_device.getSurfaceCapabilitiesKHR(*surface).currentExtent;
+                swapchain = make_swapchain();
+                image_views = make_image_views();
+                frame_buffers = make_frame_buffers();
+                break;
+
+            default:
+                break;
             }
         }
 
         auto const [result, image_index]{ swapchain.acquireNextImage(timeout, image_available_semaphore) };
-        assert(vk::Result::eSuccess == result);
+        assert(vk::Result::eSuccess == result || vk::Result::eSuboptimalKHR == result);
 
         command_buffer.reset();
 
@@ -569,11 +589,12 @@ main()
                                               .pSignalSemaphores = &*render_finish_semaphore },
                               fence);
 
-        assert(vk::Result::eSuccess == present_queue.presentKHR({ .waitSemaphoreCount = 1,
-                                                                  .pWaitSemaphores = &*render_finish_semaphore,
-                                                                  .swapchainCount = 1,
-                                                                  .pSwapchains = &*swapchain,
-                                                                  .pImageIndices = &image_index }));
+        auto const result2 = present_queue.presentKHR({ .waitSemaphoreCount = 1,
+                                                        .pWaitSemaphores = &*render_finish_semaphore,
+                                                        .swapchainCount = 1,
+                                                        .pSwapchains = &*swapchain,
+                                                        .pImageIndices = &image_index });
+        assert(vk::Result::eSuccess == result2 || vk::Result::eSuboptimalKHR == result2);
     }
 
     return EXIT_SUCCESS;
