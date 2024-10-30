@@ -371,19 +371,10 @@ main()
         .topology = vk::PrimitiveTopology::eTriangleList
     };
 
-    vk::Viewport const viewport{ .x = 0,
-                                 .y = 0,
-                                 .width = static_cast<float>(extent.width),
-                                 .height = static_cast<float>(extent.height),
-                                 .minDepth = 0,
-                                 .maxDepth = 1 };
-
-    vk::Rect2D const scissor{ .offset = { 0, 0 }, .extent = extent };
-
-    vk::PipelineViewportStateCreateInfo const viewport_state_create_info{ .viewportCount = 1,
-                                                                          .pViewports = &viewport,
-                                                                          .scissorCount = 1,
-                                                                          .pScissors = &scissor };
+    vk::PipelineViewportStateCreateInfo const viewport_state_create_info{
+        .viewportCount = 1,
+        .scissorCount = 1,
+    };
 
     vk::PipelineRasterizationStateCreateInfo const rasterization_state_create_info{
         .depthClampEnable = vk::False,
@@ -555,8 +546,14 @@ main()
                                        vk::SubpassContents::eInline);
 
         command_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
-        command_buffer.setViewport(0, viewport);
-        command_buffer.setScissor(0, scissor);
+        command_buffer.setViewport(0, vk::Viewport{ .x = 0,
+                                                    .y = 0,
+                                                    .width = static_cast<float>(extent.width),
+                                                    .height = static_cast<float>(extent.height),
+                                                    .minDepth = 0,
+                                                    .maxDepth = 1 });
+
+        command_buffer.setScissor(0, vk::Rect2D{ .offset = { 0, 0 }, .extent = extent });
         command_buffer.draw(3, 1, 0, 0);
 
         command_buffer.endRenderPass();
