@@ -2,12 +2,11 @@ toolchain := "llvm"
 arch := arch()
 working_dir := absolute_path(".")
 cmake_dir := working_dir / "cmake"
-linux_cmake_flags := "-DORBI_SANITIZER=ON -DORBI_PEDANTIC=ON"
-windows_cmake_flags := '-DCMAKE_SYSROOT='
+enable_sanitizer_flags := "-DORBI_SANITIZER=ON -DORBI_PEDANTIC=ON"
 build_dir := working_dir / "build"
 current_config_file := build_dir / "current"
 
-configure src="test/" build_type="dbg" platform=os() rebuild="false":
+configure src="test/" build_type="dbg" platform=os() rebuild="false" sanitizer="true":
     #!/usr/bin/env bash
 
     set -uo pipefail
@@ -17,7 +16,7 @@ configure src="test/" build_type="dbg" platform=os() rebuild="false":
     export ORBI_PLATFORM="{{platform}}"
     export ORBI_TOOLCHAIN="{{toolchain}}"
     export ORBI_BUILD_TYPE="{{ if build_type == "dbg" { "Debug" } else { "Release" } }}"
-    export ORBI_EXTRA_CMAKE_FLAGS="{{ if platform != "windows" { linux_cmake_flags } else { windows_cmake_flags } }}"
+    export ORBI_EXTRA_CMAKE_FLAGS="{{ if platform != "windows" { if  sanitizer == "true" { enable_sanitizer_flags } else { '' } } else { '' } }}"
     export ORBI_BUILD_DIR="{{build_dir}}/{{src}}/${ORBI_BUILD_TYPE}/${ORBI_ARCH}/${ORBI_PLATFORM}/${ORBI_TOOLCHAIN}"
     export ORBI_EXTRA_CMAKE_CXX_FLAGS="{{ if platform != "windows" { '-DCMAKE_CXX_FLAGS="-fcolor-diagnostics"' } else { '' } }}"
     ' > "{{current_config_file}}"
@@ -37,8 +36,7 @@ configure src="test/" build_type="dbg" platform=os() rebuild="false":
 
     exit $?
 
-# [cmake project] [`dbg` | `rel`] [`linux` | `windows`]. Run `configure` first
-build src="test/" build_type="dbg" platform=os() rebuild="false":
+build:
     #!/usr/bin/env bash
 
     set -uo pipefail
@@ -59,8 +57,4 @@ build src="test/" build_type="dbg" platform=os() rebuild="false":
     cp "${ORBI_BUILD_DIR}/compile_commands.json" {{working_dir}}
 
     exit $?
-
-
-rebuild src="test/" build_type="dbg" platform=os(): (build src build_type platform "true")
-
 
