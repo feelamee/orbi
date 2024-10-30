@@ -152,7 +152,7 @@ main()
 
     vk::raii::Context const ctx;
 
-    std::array<char const* const, 1> const layers{ "VK_LAYER_KHRONOS_validation" };
+    [[maybe_unused]] std::array<char const* const, 1> const layers{ "VK_LAYER_KHRONOS_validation" };
 
     auto const instance{
         [&]() -> vk::raii::Instance
@@ -526,7 +526,12 @@ main()
     while (true)
     {
         auto constexpr timeout{ 3'000'000'000 /* std::numeric_limits<std::uint64_t>::max() */ };
-        assert(vk::Result::eSuccess == device.waitForFences(*fence, vk::True, timeout));
+
+        {
+            [[maybe_unused]] auto const result{ device.waitForFences(*fence, vk::True, timeout) };
+            assert(vk::Result::eSuccess == result);
+        }
+
         device.resetFences(*fence);
 
         SDL_Event ev{};
@@ -549,7 +554,7 @@ main()
             }
         }
 
-        auto const [result, image_index]{ swapchain.acquireNextImage(timeout, image_available_semaphore) };
+        [[maybe_unused]] auto const [result, image_index]{ swapchain.acquireNextImage(timeout, image_available_semaphore) };
         assert(vk::Result::eSuccess == result || vk::Result::eSuboptimalKHR == result);
 
         command_buffer.reset();
@@ -589,11 +594,12 @@ main()
                                               .pSignalSemaphores = &*render_finish_semaphore },
                               fence);
 
-        auto const result2 = present_queue.presentKHR({ .waitSemaphoreCount = 1,
-                                                        .pWaitSemaphores = &*render_finish_semaphore,
-                                                        .swapchainCount = 1,
-                                                        .pSwapchains = &*swapchain,
-                                                        .pImageIndices = &image_index });
+        [[maybe_unused]] auto const result2 =
+            present_queue.presentKHR({ .waitSemaphoreCount = 1,
+                                       .pWaitSemaphores = &*render_finish_semaphore,
+                                       .swapchainCount = 1,
+                                       .pSwapchains = &*swapchain,
+                                       .pImageIndices = &image_index });
         assert(vk::Result::eSuccess == result2 || vk::Result::eSuboptimalKHR == result2);
     }
 
