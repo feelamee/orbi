@@ -61,16 +61,16 @@ vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsM
                            data->pMessage);
     // clang-format on
 
-    if (0 < data->queueLabelCount)
+    if (data->queueLabelCount > 0)
     {
         message << "\tQueue Labels:\n";
-        for (uint32_t i = 0; i < data->queueLabelCount; i++)
+        for (uint32_t i{ 0 }; i < data->queueLabelCount; i++)
         {
             message << std::format("\t\tlabelName = <{}>\n", data->pQueueLabels[i].pLabelName);
         }
     }
 
-    if (0 < data->cmdBufLabelCount)
+    if (data->cmdBufLabelCount > 0)
     {
         message << "\tCommandBuffer Labels:\n";
         for (uint32_t i = 0; i < data->cmdBufLabelCount; i++)
@@ -79,10 +79,10 @@ vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsM
         }
     }
 
-    if (0 < data->objectCount)
+    if (data->objectCount > 0)
     {
         message << std::format("\tObjects:\n");
-        for (uint32_t i = 0; i < data->objectCount; i++)
+        for (uint32_t i{ 0 }; i < data->objectCount; i++)
         {
             // clang-format off
             message << std::format("\t\tObject {}\n"
@@ -126,7 +126,7 @@ read_file(std::filesystem::path const& filename)
     std::ifstream file(filename, std::ios::binary);
     file.exceptions(std::ifstream::badbit);
 
-    auto const size = std::filesystem::file_size(filename);
+    auto const size{ std::filesystem::file_size(filename) };
     std::vector<std::byte> buffer{ size };
 
     file.read(reinterpret_cast<std::ifstream::char_type*>(buffer.data()), static_cast<std::streamsize>(size));
@@ -192,17 +192,15 @@ main()
     auto const debug_utils_messenger{
         [&]() -> vk::raii::DebugUtilsMessengerEXT
         {
-            using severity = vk::DebugUtilsMessageSeverityFlagBitsEXT;
-            auto const severity_flags(severity::eWarning | severity::eError);
+            auto const severity_flags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
+                                      vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
 
-            using type = vk::DebugUtilsMessageTypeFlagBitsEXT;
-            auto const type_flags(type::eGeneral | type::ePerformance | type::eValidation);
+            auto const type_flags(vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
+                                  vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
+                                  vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
 
-            vk::DebugUtilsMessengerCreateInfoEXT create_info{ .messageSeverity = severity_flags,
-                                                              .messageType = type_flags,
-                                                              .pfnUserCallback = &vk_debug_callback };
-
-            return { instance, create_info };
+            return { instance,
+                     { .messageSeverity = severity_flags, .messageType = type_flags, .pfnUserCallback = &vk_debug_callback } };
         }()
     };
 
@@ -254,44 +252,46 @@ main()
         }()
     };
 
-    std::vector unique_queue_families{ [&]
-                                       {
-                                           std::vector families{ graphics_queue_family_index,
-                                                                 present_queue_family_index };
-                                           std::ranges::sort(families);
-                                           auto const [first, last] = std::ranges::unique(families);
-                                           families.erase(first, last);
+    std::vector const unique_queue_families{ [&]
+                                             {
+                                                 std::vector families{ graphics_queue_family_index,
+                                                                       present_queue_family_index };
+                                                 std::ranges::sort(families);
+                                                 auto const [first, last] = std::ranges::unique(families);
+                                                 families.erase(first, last);
 
-                                           return families;
-                                       }() };
+                                                 return families;
+                                             }() };
 
-    auto device{ [&]() -> vk::raii::Device
-                 {
-                     float const queue_priority{ 1 };
+    auto const device{
+        [&]() -> vk::raii::Device
+        {
+            float const queue_priority{ 1 };
 
-                     std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
-                     for (auto const& qf : unique_queue_families)
-                     {
-                         queue_create_infos.push_back(
-                             { .queueFamilyIndex = qf, .queueCount = 1, .pQueuePriorities = &queue_priority });
-                     }
+            std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
+            for (auto const& qf : unique_queue_families)
+            {
+                queue_create_infos.push_back(
+                    { .queueFamilyIndex = qf, .queueCount = 1, .pQueuePriorities = &queue_priority });
+            }
 
-                     std::array<char const* const, 1> const device_extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+            std::array<char const* const, 1> const device_extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-                     vk::DeviceCreateInfo const device_create_info{
-                         .queueCreateInfoCount = static_cast<std::uint32_t>(queue_create_infos.size()),
-                         .pQueueCreateInfos = queue_create_infos.data(),
+            vk::DeviceCreateInfo const device_create_info{
+                .queueCreateInfoCount = static_cast<std::uint32_t>(queue_create_infos.size()),
+                .pQueueCreateInfos = queue_create_infos.data(),
 #ifndef NDEBUG
-                         .enabledLayerCount = layers.size(),
-                         .ppEnabledLayerNames = layers.data(),
+                .enabledLayerCount = layers.size(),
+                .ppEnabledLayerNames = layers.data(),
 #endif
-                         .enabledExtensionCount = device_extensions.size(),
-                         .ppEnabledExtensionNames = device_extensions.data()
+                .enabledExtensionCount = device_extensions.size(),
+                .ppEnabledExtensionNames = device_extensions.data()
 
-                     };
+            };
 
-                     return { physical_device, device_create_info };
-                 }() };
+            return { physical_device, device_create_info };
+        }()
+    };
 
     vk::raii::Queue const graphics_queue{ device.getQueue(graphics_queue_family_index, 0) };
     vk::raii::Queue const present_queue{ device.getQueue(present_queue_family_index, 0) };
