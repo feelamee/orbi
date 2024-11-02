@@ -19,6 +19,7 @@ configure src="test/" build_type="dbg" platform=os() rebuild="false" sanitizer="
     export ORBI_EXTRA_CMAKE_FLAGS="{{ if platform != "windows" { if  sanitizer == "true" { enable_sanitizer_flags } else { '' } } else { '' } }}"
     export ORBI_BUILD_DIR="{{build_dir}}/{{src}}/${ORBI_BUILD_TYPE}/${ORBI_ARCH}/${ORBI_PLATFORM}/${ORBI_TOOLCHAIN}"
     export ORBI_EXTRA_CMAKE_CXX_FLAGS="{{ if platform != "windows" { '-DCMAKE_CXX_FLAGS="-fcolor-diagnostics"' } else { '' } }}"
+    export ORBI_SRC="{{src}}"
     ' > "{{current_config_file}}"
 
     . "{{current_config_file}}"
@@ -36,7 +37,7 @@ configure src="test/" build_type="dbg" platform=os() rebuild="false" sanitizer="
 
     exit $?
 
-build:
+_check_current_file:
     #!/usr/bin/env bash
 
     set -uo pipefail
@@ -48,6 +49,11 @@ build:
         exit 1
     fi
 
+build: _check_current_file
+    #!/usr/bin/env bash
+
+    set -uo pipefail
+
     . "{{current_config_file}}"
 
     cmake --build "${ORBI_BUILD_DIR}" -j
@@ -58,3 +64,14 @@ build:
 
     exit $?
 
+run: build
+    #!/usr/bin/env bash
+
+    set -uo pipefail
+
+    . "{{current_config_file}}"
+
+    executable="${ORBI_BUILD_DIR}/$(basename ${ORBI_SRC})"
+    echo "running: ${executable}"
+
+    "${executable}"
