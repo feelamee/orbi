@@ -263,35 +263,33 @@ main()
                                                  return families;
                                              }() };
 
-    auto const device{
-        [&]() -> vk::raii::Device
-        {
-            float const queue_priority{ 1 };
+    auto const device{ [&]() -> vk::raii::Device
+                       {
+                           float const queue_priority{ 1 };
 
-            std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
-            for (auto const& qf : unique_queue_families)
-            {
-                queue_create_infos.push_back(
-                    { .queueFamilyIndex = qf, .queueCount = 1, .pQueuePriorities = &queue_priority });
-            }
+                           std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
+                           for (auto const& qf : unique_queue_families)
+                           {
+                               queue_create_infos.push_back(
+                                   { .queueFamilyIndex = qf, .queueCount = 1, .pQueuePriorities = &queue_priority });
+                           }
 
-            std::array<char const* const, 1> const device_extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+                           std::array const device_extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-            vk::DeviceCreateInfo const device_create_info{
-                .queueCreateInfoCount = static_cast<std::uint32_t>(queue_create_infos.size()),
-                .pQueueCreateInfos = queue_create_infos.data(),
+                           vk::DeviceCreateInfo const device_create_info{
+                               .queueCreateInfoCount = static_cast<std::uint32_t>(queue_create_infos.size()),
+                               .pQueueCreateInfos = queue_create_infos.data(),
 #ifndef NDEBUG
-                .enabledLayerCount = layers.size(),
-                .ppEnabledLayerNames = layers.data(),
+                               .enabledLayerCount = layers.size(),
+                               .ppEnabledLayerNames = layers.data(),
 #endif
-                .enabledExtensionCount = device_extensions.size(),
-                .ppEnabledExtensionNames = device_extensions.data()
+                               .enabledExtensionCount = device_extensions.size(),
+                               .ppEnabledExtensionNames = device_extensions.data()
 
-            };
+                           };
 
-            return { physical_device, device_create_info };
-        }()
-    };
+                           return { physical_device, device_create_info };
+                       }() };
 
     vk::raii::Queue const graphics_queue{ device.getQueue(graphics_queue_family_index, 0) };
     vk::raii::Queue const present_queue{ device.getQueue(present_queue_family_index, 0) };
