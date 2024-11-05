@@ -1,9 +1,6 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
-
-// workaround for bug https://github.com/libsdl-org/SDL/issues/11328
-#undef VK_DEFINE_NON_DISPATCHABLE_HANDLE
 #include <vulkan/vulkan_raii.hpp>
 
 #include <cstdlib>

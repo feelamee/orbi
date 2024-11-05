@@ -19,8 +19,7 @@ target_compile_features(orbi PUBLIC cxx_std_20)
 target_include_directories(orbi PUBLIC "${include_dir}")
 target_link_libraries(orbi PRIVATE $<$<BOOL:${ANDROID}>:anroid log>)
 target_compile_definitions(orbi PUBLIC VULKAN_HPP_NO_CONSTRUCTORS
-                                        VULKAN_HPP_NO_SPACESHIP_OPERATOR)
-
+                                       VULKAN_HPP_NO_SPACESHIP_OPERATOR)
 
 include(pedantic)
 target_link_libraries(orbi
@@ -53,11 +52,13 @@ target_link_libraries(orbi PUBLIC Vulkan::Headers Vulkan::Vulkan)
 FetchContent_Declare(
   SDL3
   GIT_REPOSITORY "https://github.com/libsdl-org/SDL"
-  GIT_TAG "8468c372b21b937d7adb340c4725d77c7d87c4d9")
+  GIT_TAG "preview-3.1.6")
 FetchContent_MakeAvailable(SDL3)
 
 # TODO: use `PRIVATE` after adding all api needed in examples to `orbi`
-target_link_libraries(orbi PUBLIC SDL3::SDL3)
+target_link_libraries(
+  orbi
+  PUBLIC $<IF:$<BOOL:${BUILD_SHARED_LIBS}>,SDL3::SDL3-shared,SDL3::SDL3-static>)
 
 include(GenerateExportHeader)
 
