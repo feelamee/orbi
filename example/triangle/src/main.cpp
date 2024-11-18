@@ -201,18 +201,12 @@ main()
         }()
     };
 
-    auto const surface{ [&]() -> vk::raii::SurfaceKHR
-                        {
-                            VkSurfaceKHR raw_surface{};
-                            if (!SDL_Vulkan_CreateSurface(window, *instance, nullptr, &raw_surface))
-                            {
-                                throw sdl_error{
-                                    std::format("SDL_Vulkan_CreateSurface failed with: '{}'", SDL_GetError())
-                                };
-                            }
-
-                            return { instance, raw_surface };
-                        }() };
+    VkSurfaceKHR surface{};
+    if (!SDL_Vulkan_CreateSurface(window, *instance, nullptr, &surface))
+    {
+        throw sdl_error{ std::format("SDL_Vulkan_CreateSurface failed with: '{}'", SDL_GetError()) };
+    }
+    scope_exit const destroy_surface{ [&] { SDL_Vulkan_DestroySurface(*instance, surface, nullptr); } };
 
     vk::raii::PhysicalDevice const physical_device{ instance.enumeratePhysicalDevices().at(0) };
 
@@ -240,7 +234,7 @@ main()
             auto const queue_families{ physical_device.getQueueFamilyProperties() };
             auto const it{
                 std::ranges::find_if(queue_families, [&, i = 0](auto const) mutable
-                                     { return physical_device.getSurfaceSupportKHR(i++, *surface); })
+                                     { return physical_device.getSurfaceSupportKHR(i++, surface); })
             };
 
             assert(it != end(queue_families));
@@ -294,7 +288,7 @@ main()
     auto const surface_format{
         [&]
         {
-            std::vector const formats{ physical_device.getSurfaceFormatsKHR(*surface) };
+            std::vector const formats{ physical_device.getSurfaceFormatsKHR(surface) };
             auto const fmt{ std::ranges::find(formats, vk::SurfaceFormatKHR{ vk::Format::eB8G8R8A8Srgb,
                                                                              vk::ColorSpaceKHR::eSrgbNonlinear }) };
 
@@ -306,7 +300,7 @@ main()
     auto const surface_present_mode{
         [&]
         {
-            std::vector const modes{ physical_device.getSurfacePresentModesKHR(*surface) };
+            std::vector const modes{ physical_device.getSurfacePresentModesKHR(surface) };
             auto const mode{ std::ranges::find(modes, vk::PresentModeKHR::eFifo) };
 
             assert(mode != end(modes));
@@ -314,14 +308,14 @@ main()
         }()
     };
 
-    auto const surface_capabilities{ physical_device.getSurfaceCapabilitiesKHR(*surface) };
+    auto const surface_capabilities{ physical_device.getSurfaceCapabilitiesKHR(surface) };
     vk::Extent2D extent{ surface_capabilities.currentExtent };
 
     auto const make_swapchain{
         [&]() -> vk::raii::SwapchainKHR
         {
             return { device,
-                     { .surface = *surface,
+                     { .surface = surface,
                        .minImageCount = std::clamp(3u, surface_capabilities.minImageCount,
                                                    surface_capabilities.maxImageCount == 0
                                                        ? std::numeric_limits<std::uint32_t>::max()
@@ -538,7 +532,7 @@ main()
                 return EXIT_SUCCESS;
 
             case SDL_EVENT_WINDOW_RESIZED:
-                extent = physical_device.getSurfaceCapabilitiesKHR(*surface).currentExtent;
+                extent = physical_device.getSurfaceCapabilitiesKHR(surface).currentExtent;
                 swapchain = make_swapchain();
                 image_views = make_image_views();
                 frame_buffers = make_frame_buffers();
