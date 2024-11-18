@@ -138,14 +138,14 @@ main()
     {
         throw sdl_error{ std::format("SDL_Init failed with: '{}'", SDL_GetError()) };
     }
-    auto const destroy_sdl{ scope_exit([&]() { SDL_Quit(); }) };
+    scope_exit const destroy_sdl{ [&]() { SDL_Quit(); } };
 
     auto* const window{ SDL_CreateWindow(app_name, 720, 480, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE) };
     if (!window)
     {
         throw sdl_error{ std::format("SDL_CreateWindow failed with: '{}'", SDL_GetError()) };
     }
-    auto const destroy_window{ scope_exit([&]() { SDL_DestroyWindow(window); }) };
+    scope_exit const destroy_window{ [&]() { SDL_DestroyWindow(window); } };
 
     vk::raii::Context const ctx;
 
