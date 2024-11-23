@@ -1,6 +1,7 @@
 #pragma once
 
 #include <source_location>
+#include <type_traits>
 
 namespace orbi::detail
 {
@@ -18,6 +19,13 @@ unreachable()
 #else // GCC, Clang
     __builtin_unreachable();
 #endif
+}
+
+template <class Enum>
+constexpr std::underlying_type_t<Enum>
+to_underlying(Enum e) noexcept
+{
+    return static_cast<std::underlying_type_t<Enum>>(e);
 }
 
 } // namespace orbi::detail
