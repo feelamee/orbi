@@ -1,3 +1,5 @@
+#include <orbi/ctx.hpp>
+
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
@@ -135,11 +137,7 @@ read_file(std::filesystem::path const& filename)
 int
 main()
 {
-    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
-    {
-        throw sdl_error{ std::format("SDL_Init failed with: '{}'", SDL_GetError()) };
-    }
-    scope_exit const destroy_sdl{ [&]() { SDL_Quit(); } };
+    orbi::ctx ctx{ orbi::ctx::subsystem::video | orbi::ctx::subsystem::event };
 
     auto* const window{ SDL_CreateWindow(app_name, 720, 480, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE) };
     if (!window)
@@ -148,7 +146,7 @@ main()
     }
     scope_exit const destroy_window{ [&]() { SDL_DestroyWindow(window); } };
 
-    vk::raii::Context const ctx;
+    vk::raii::Context const vulkan_context;
 
     [[maybe_unused]] std::array<char const* const, 1> const layers{ "VK_LAYER_KHRONOS_validation" };
 
@@ -183,7 +181,7 @@ main()
             instance_create_info.ppEnabledLayerNames = layers.data();
 #endif
 
-            return { ctx, instance_create_info };
+            return { vulkan_context, instance_create_info };
         }()
     };
 
