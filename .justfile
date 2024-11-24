@@ -75,3 +75,7 @@ run: build
     echo "running: ${executable}"
 
     "${executable}"
+
+alias r := run
+alias b := build
+alias c := configure
