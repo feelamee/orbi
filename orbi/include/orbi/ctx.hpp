@@ -3,7 +3,6 @@
 #include <orbi/exception.hpp>
 
 #include <cstdint>
-#include <format>
 
 namespace orbi
 {
@@ -13,11 +12,7 @@ struct ctx
 public:
     struct error : runtime_error
     {
-        template <class... Args>
-        error(std::format_string<Args...> fmt, Args&&... args)
-            : runtime_error(std::format(std::move(fmt), std::forward<Args>(args)...))
-        {
-        }
+        using runtime_error::runtime_error;
     };
 
     enum struct subsystem : std::uint32_t
