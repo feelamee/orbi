@@ -3,6 +3,8 @@
 
 #include <SDL3/SDL_init.h>
 
+#include <utility>
+
 namespace orbi
 {
 
@@ -33,7 +35,31 @@ ctx::ctx(subsystem const flags)
 
 ctx::~ctx()
 {
-    SDL_Quit();
+    if (need_release_resource)
+    {
+        SDL_Quit();
+    }
+}
+
+ctx::ctx(ctx&& other)
+    : need_release_resource(std::exchange(other.need_release_resource, false))
+{
+}
+
+ctx&
+ctx::operator=(ctx other)
+{
+    swap(*this, other);
+
+    return *this;
+}
+
+void
+swap(ctx& l, ctx& r) noexcept
+{
+    using std::swap;
+
+    swap(l.need_release_resource, r.need_release_resource);
 }
 
 } // namespace orbi

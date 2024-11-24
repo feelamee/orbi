@@ -10,6 +10,7 @@ namespace orbi
 
 struct ctx
 {
+public:
     struct error : runtime_error
     {
         template <class... Args>
@@ -38,11 +39,18 @@ struct ctx
     ~ctx();
 
     ctx(ctx&&);
-    ctx& operator=(ctx&&);
+    ctx& operator=(ctx);
 
     // TODO what about mixins? like `noncopyable`, `nonmoveable`, etc
+    ctx& operator=(ctx&&) = delete;
+
     ctx(ctx const&) = delete;
     ctx& operator=(ctx const&) = delete;
+
+    friend void swap(ctx&, ctx&) noexcept;
+
+private:
+    bool need_release_resource{ true };
 };
 
 } // namespace orbi
