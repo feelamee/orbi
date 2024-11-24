@@ -1,4 +1,5 @@
 #include <orbi/ctx.hpp>
+#include <orbi/window.hpp>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_video.h>
@@ -139,12 +140,7 @@ main()
 {
     orbi::ctx ctx{ orbi::ctx::subsystem::video | orbi::ctx::subsystem::event };
 
-    auto* const window{ SDL_CreateWindow(app_name, 720, 480, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE) };
-    if (!window)
-    {
-        throw sdl_error{ std::format("SDL_CreateWindow failed with: '{}'", SDL_GetError()) };
-    }
-    scope_exit const destroy_window{ [&]() { SDL_DestroyWindow(window); } };
+    orbi::window window{ ctx };
 
     vk::raii::Context const vulkan_context;
 
@@ -201,7 +197,7 @@ main()
     };
 
     VkSurfaceKHR surface{};
-    if (!SDL_Vulkan_CreateSurface(window, *instance, nullptr, &surface))
+    if (!SDL_Vulkan_CreateSurface(std::any_cast<SDL_Window*>(window.inner()), *instance, nullptr, &surface))
     {
         throw sdl_error{ std::format("SDL_Vulkan_CreateSurface failed with: '{}'", SDL_GetError()) };
     }

@@ -18,6 +18,10 @@ public:
         using runtime_error::runtime_error;
     };
 
+    /*
+        @pre `ctx` must outlive `*this`
+        @throw `window::error`
+    */
     window(ctx const&);
     ~window();
 
