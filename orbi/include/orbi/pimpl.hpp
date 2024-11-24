@@ -20,12 +20,12 @@ public:
     }
 
     pimpl(pimpl const& other)
-        : pimpl(*other.as_held())
+        : pimpl(*other)
     {
     }
 
     pimpl(pimpl&& other)
-        : pimpl(*other.as_held())
+        : pimpl(*other)
     {
     }
 
@@ -34,7 +34,7 @@ public:
     pimpl&
     operator=(pimpl other)
     {
-        *as_held() = std::move(*other.as_held());
+        *as_held() = std::move(*other);
     }
 
     friend void
