@@ -14,7 +14,11 @@ else()
   add_library(orbi STATIC)
 endif()
 
-target_sources(orbi PRIVATE "${include_dir}/orbi/util.hpp" "src/util.cpp")
+target_sources(
+  orbi
+  PRIVATE "${include_dir}/orbi/util.hpp" "src/util.cpp"
+          "${include_dir}/orbi/ctx.hpp" "src/ctx.cpp"
+          "${include_dir}/orbi/exception.hpp")
 target_compile_features(orbi PUBLIC cxx_std_20)
 target_include_directories(orbi PUBLIC "${include_dir}")
 target_link_libraries(orbi PRIVATE $<$<BOOL:${ANDROID}>:anroid log>)
