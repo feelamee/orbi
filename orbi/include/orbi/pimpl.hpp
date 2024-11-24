@@ -83,5 +83,11 @@ private:
         return reinterpret_cast<T const*>(data.data());
     }
 
+    T*
+    as_held() noexcept
+    {
+        return reinterpret_cast<T*>(data.data());
+    }
+
     alignas(Alignment) std::array<std::byte, Size> data;
 };
