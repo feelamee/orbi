@@ -9,7 +9,7 @@ FetchContent_Declare(
   GIT_TAG "v2.4.11")
 FetchContent_MakeAvailable(doctest)
 
-add_executable(test "main.test.cpp" "orbi/ctx.cpp")
+add_executable(test "main.test.cpp" "orbi/ctx.test.cpp" "orbi/window.test.cpp")
 target_compile_features(test PRIVATE cxx_std_20)
 target_link_libraries(test PRIVATE doctest::doctest)
 
