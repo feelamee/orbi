@@ -2,7 +2,7 @@
 
 #include <orbi/exception.hpp>
 #include <orbi/pimpl.hpp>
-#include <orbi/version.hpp>
+#include <orbi/semver.hpp>
 
 #include <any>
 #include <cstdint>
@@ -13,7 +13,7 @@ namespace orbi
 struct app_info
 {
     std::string name{ "default application name" };
-    version version{ /* TODO */ };
+    semver version{ /* TODO */ };
 };
 
 struct ctx
