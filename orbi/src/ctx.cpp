@@ -1,5 +1,5 @@
 #include <orbi/ctx.hpp>
-#include <orbi/util.hpp>
+#include <orbi/detail/util.hpp>
 
 #include <SDL3/SDL_init.h>
 

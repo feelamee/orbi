@@ -1,4 +1,4 @@
-#include <orbi/util.hpp>
+#include <orbi/detail/util.hpp>
 #include <orbi/window.hpp>
 
 #include <SDL3/SDL_video.h>

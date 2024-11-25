@@ -16,7 +16,7 @@ endif()
 
 target_sources(
   orbi
-  PRIVATE "${include_dir}/orbi/util.hpp"
+  PRIVATE "${include_dir}/orbi/detail/util.hpp"
           "src/util.cpp"
           "${include_dir}/orbi/ctx.hpp"
           "src/ctx.cpp"

@@ -1,7 +1,7 @@
 #include <doctest/doctest.h>
 
 #include <orbi/ctx.hpp>
-#include <orbi/util.hpp>
+#include <orbi/detail/util.hpp>
 
 TEST_SUITE("orbi")
 {
