@@ -39,6 +39,7 @@ target_link_libraries(orbi PUBLIC $<$<BOOL:${ORBI_SANITIZER}>:sanitizer::address
                                   sanitizer::undefined>)
 
 include(FetchContent)
+set(FETCHCONTENT_QUIET OFF)
 
 if(BUILD_SHARED_LIBS)
   set(SDL_SHARED ON)
