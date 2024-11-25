@@ -1,11 +1,20 @@
 #pragma once
 
 #include <orbi/exception.hpp>
+#include <orbi/pimpl.hpp>
+#include <orbi/version.hpp>
 
+#include <any>
 #include <cstdint>
 
 namespace orbi
 {
+
+struct app_info
+{
+    std::string name{ "default application name" };
+    version version{ /* TODO */ };
+};
 
 struct ctx
 {
@@ -24,13 +33,13 @@ public:
     friend subsystem operator&(subsystem, subsystem);
 
     /*
-        init inner backend and requred subsystems.
+        init inner backend and required subsystems.
         Some of subsystems init can implie another.
-        So, they will be inited too even if now required by caller
+        So, they will be inited too even if not required by caller
 
         @throw `ctx::error`
     */
-    ctx(subsystem = {});
+    ctx(subsystem = {}, app_info const& = {});
     ~ctx();
 
     ctx(ctx&&);
@@ -44,8 +53,25 @@ public:
 
     friend void swap(ctx&, ctx&) noexcept;
 
+    // TODO remove; created only to postpone design of api
+    /*
+        @return `std::reference_wrapper<vk::raii::Context>`
+                if `ctx` was initialized with `subsystem::video`
+                Else `ret.has_value() == false`, where `ret` is returned object
+    */
+    std::any inner_vulkan_context() noexcept;
+    /*
+        @return `std::reference_wrapper<vk::raii::Instance>`
+                if `ctx` was initialized with `subsystem::video`.
+                Else `ret.has_value() == false`, where `ret` is returned object
+    */
+    std::any inner_vulkan_instance() noexcept;
+
 private:
     bool need_release_resource{ true };
+
+    struct impl;
+    pimpl<impl, 48, 8> pimpl;
 };
 
 } // namespace orbi
