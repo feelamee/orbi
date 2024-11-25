@@ -40,9 +40,6 @@ private:
     Fn fn;
 };
 
-constexpr auto const app_name = "probably triangle";
-constexpr auto const engine_name = "orbi";
-
 VKAPI_ATTR VkBool32 VKAPI_CALL
 vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type,
                   VkDebugUtilsMessengerCallbackDataEXT const* data, void* /*user_data*/)
@@ -138,47 +135,14 @@ read_file(std::filesystem::path const& filename)
 int
 main()
 {
-    orbi::ctx ctx{ orbi::ctx::subsystem::video | orbi::ctx::subsystem::event };
+    orbi::ctx ctx{ orbi::ctx::subsystem::video | orbi::ctx::subsystem::event,
+                   { .name = "probably triangle", .version = vk::makeApiVersion(0, 0, 1, 0) } };
 
     orbi::window window{ ctx };
 
-    vk::raii::Context const vulkan_context;
-
-    [[maybe_unused]] std::array<char const* const, 1> const layers{ "VK_LAYER_KHRONOS_validation" };
-
-    auto const instance{
-        [&]() -> vk::raii::Instance
-        {
-            vk::ApplicationInfo const application_info{ .pApplicationName = app_name,
-                                                        .applicationVersion = vk::makeApiVersion(0, 0, 1, 0),
-                                                        .pEngineName = engine_name,
-                                                        .engineVersion = vk::makeApiVersion(0, 0, 1, 0),
-                                                        .apiVersion = VK_API_VERSION_1_3 };
-            vk::InstanceCreateInfo instance_create_info{ .pApplicationInfo = &application_info };
-
-            auto const* const extensions_c_array =
-                SDL_Vulkan_GetInstanceExtensions(&instance_create_info.enabledExtensionCount);
-            if (!extensions_c_array)
-            {
-                throw sdl_error{ std::format("SDL_Vulkan_GetInstanceExtensions failed with: '{}'",
-                                             SDL_GetError()) };
-            }
-
-            std::vector<char const*> extensions{ extensions_c_array,
-                                                 // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                                                 extensions_c_array + instance_create_info.enabledExtensionCount };
-
-            extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-            instance_create_info.enabledExtensionCount = extensions.size();
-            instance_create_info.ppEnabledExtensionNames = extensions.data();
-
-#ifndef NDEBUG
-            instance_create_info.enabledLayerCount = layers.size();
-            instance_create_info.ppEnabledLayerNames = layers.data();
-#endif
-
-            return { vulkan_context, instance_create_info };
-        }()
+    // so.. bad code should be ugly)
+    auto& vulkan_instance{
+        std::any_cast<std::reference_wrapper<vk::raii::Instance>>(ctx.inner_vulkan_instance()).get()
     };
 
     auto const debug_utils_messenger{
@@ -191,19 +155,21 @@ main()
                                   vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
                                   vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
 
-            return { instance,
+            return { vulkan_instance,
                      { .messageSeverity = severity_flags, .messageType = type_flags, .pfnUserCallback = &vk_debug_callback } };
         }()
     };
 
     VkSurfaceKHR surface{};
-    if (!SDL_Vulkan_CreateSurface(std::any_cast<SDL_Window*>(window.inner()), *instance, nullptr, &surface))
+    if (!SDL_Vulkan_CreateSurface(std::any_cast<SDL_Window*>(window.inner()), *vulkan_instance, nullptr, &surface))
     {
         throw sdl_error{ std::format("SDL_Vulkan_CreateSurface failed with: '{}'", SDL_GetError()) };
     }
-    scope_exit const destroy_surface{ [&] { SDL_Vulkan_DestroySurface(*instance, surface, nullptr); } };
+    scope_exit const destroy_surface{ [&] {
+        SDL_Vulkan_DestroySurface(*vulkan_instance, surface, nullptr);
+    } };
 
-    vk::raii::PhysicalDevice const physical_device{ instance.enumeratePhysicalDevices().at(0) };
+    vk::raii::PhysicalDevice const physical_device{ vulkan_instance.enumeratePhysicalDevices().at(0) };
 
     using queue_family_index_type = std::uint32_t;
 
@@ -265,10 +231,6 @@ main()
                            vk::DeviceCreateInfo const device_create_info{
                                .queueCreateInfoCount = static_cast<std::uint32_t>(queue_create_infos.size()),
                                .pQueueCreateInfos = queue_create_infos.data(),
-#ifndef NDEBUG
-                               .enabledLayerCount = layers.size(),
-                               .ppEnabledLayerNames = layers.data(),
-#endif
                                .enabledExtensionCount = device_extensions.size(),
                                .ppEnabledExtensionNames = device_extensions.data()
 
