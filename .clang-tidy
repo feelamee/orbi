@@ -5,7 +5,7 @@ Checks: '-*, # disable all to specify needed manually
         ,-readability-isolate-declaration
         ,-readability-magic-numbers
         ,readability-make-member-function-const
-        ,readability-named-parameter
+        ,-readability-named-parameter
         ,readability-non-const-parameter
         ,readability-operators-representation
         ,readability-redundant-access-specifiers
@@ -32,7 +32,7 @@ Checks: '-*, # disable all to specify needed manually
         ,modernize-use-auto
         ,modernize-use-emplace
         ,modernize-use-equals-delete
-        ,modernize-use-nodiscard
+        ,-modernize-use-nodiscard
         ,modernize-use-transparent-functors
         ,modernize-use-using
 
