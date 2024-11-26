@@ -58,11 +58,11 @@ build: _check_current_file
 
     cmake --build "${ORBI_BUILD_DIR}" -j
 
-    [[ $? != 0 ]] && exit 2
+    build_result="$?"
 
     cp "${ORBI_BUILD_DIR}/compile_commands.json" {{working_dir}}
 
-    exit $?
+    exit ${build_result}
 
 run: build
     #!/usr/bin/env bash
