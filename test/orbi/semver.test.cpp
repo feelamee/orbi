@@ -27,16 +27,16 @@ TEST_SUITE("orbi::version")
     std::string::value_type random_char(Filter const& filter = {})
     {
         using value_type = std::string::value_type;
-        static constexpr auto is_value_type_signed = std::numeric_limits<value_type>::is_signed;
+        using limits = std::numeric_limits<value_type>;
 
         using signed_integral = long long;
         using unsigned_integral = std::make_unsigned_t<signed_integral>;
-        using integral = std::conditional_t<is_value_type_signed, signed_integral, unsigned_integral>;
+        using integral = std::conditional_t<limits::is_signed, signed_integral, unsigned_integral>;
 
         static_assert(sizeof(integral) >= sizeof(value_type) &&
-                      std::numeric_limits<integral>::is_signed == is_value_type_signed);
+                      std::numeric_limits<integral>::is_signed == limits::is_signed);
 
-        std::uniform_int_distribution<integral> dist;
+        std::uniform_int_distribution<integral> dist{ limits::min(), limits::max() };
 
         value_type res{};
 
