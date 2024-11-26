@@ -5,9 +5,9 @@ namespace orbi
 {
 
 std::optional<semver>
-semver::parse(std::string_view s)
+semver::parse(std::string_view /*s*/)
 {
-    detail::unimplemented();
+    return std::nullopt;
 }
 
 semver::version
