@@ -183,6 +183,8 @@ public:
     version minor() const;
     version patch() const;
 
+    std::string str() const;
+
 private:
     version major_{ 0 };
     version minor_{ 0 };
