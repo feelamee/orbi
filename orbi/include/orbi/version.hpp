@@ -5,6 +5,11 @@
 namespace orbi
 {
 
-using version = std::uint32_t;
+struct version
+{
+    std::uint16_t major;
+    std::uint16_t minor;
+    std::uint16_t patch;
+};
 
 } // namespace orbi

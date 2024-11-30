@@ -136,7 +136,7 @@ int
 main()
 {
     orbi::ctx ctx{ orbi::ctx::subsystem::video | orbi::ctx::subsystem::event,
-                   { .name = "probably triangle", .version = vk::makeApiVersion(0, 0, 1, 0) } };
+                   { .name = "probably triangle", .version = orbi::version{ 0, 1, 0 } } };
 
     orbi::window window{ ctx };
 

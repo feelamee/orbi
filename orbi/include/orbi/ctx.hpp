@@ -13,7 +13,7 @@ namespace orbi
 struct app_info
 {
     std::string name{ "default application name" };
-    version version{ /* TODO */ };
+    version version{ 0, 1, 0 };
 };
 
 struct ctx

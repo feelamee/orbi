@@ -6,3 +6,4 @@ compile_commands.json
 generated/
 .leak-sanitizer-suppressions
 .envrc
+.zed
