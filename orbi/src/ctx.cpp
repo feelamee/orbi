@@ -29,10 +29,8 @@ ctx::impl::video::video(app_info const& app_info)
     : vulkan_instance{ nullptr }
 {
 
-    auto const app_version{ vk::makeApiVersion({},
-                                               app_info.version.major(),
-                                               app_info.version.minor(),
-                                               app_info.version.patch())};
+    auto const app_version{ vk::makeApiVersion(
+        {}, app_info.version.major(), app_info.version.minor(), app_info.version.patch()) };
 
     vk::ApplicationInfo const vulkan_app_info{ .pApplicationName = app_info.name.c_str(),
                                                .applicationVersion = app_version,
@@ -42,16 +40,18 @@ ctx::impl::video::video(app_info const& app_info)
 
     vk::InstanceCreateInfo instance_create_info{ .pApplicationInfo = &vulkan_app_info };
 
-    auto const* const needed_extensions =
-        SDL_Vulkan_GetInstanceExtensions(&instance_create_info.enabledExtensionCount);
+    auto const* const needed_extensions
+        = SDL_Vulkan_GetInstanceExtensions(&instance_create_info.enabledExtensionCount);
     if (!needed_extensions)
     {
         throw error{ "SDL_Vulkan_GetInstanceExtensions failed with: '{}'", SDL_GetError() };
     }
 
-    std::vector<char const*> extensions{ needed_extensions,
-                                         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-                                         needed_extensions + instance_create_info.enabledExtensionCount };
+    std::vector<char const*> extensions{
+        needed_extensions,
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        needed_extensions + instance_create_info.enabledExtensionCount
+    };
 
     extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
     instance_create_info.enabledExtensionCount = extensions.size();

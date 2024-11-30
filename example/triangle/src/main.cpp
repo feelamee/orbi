@@ -41,7 +41,8 @@ private:
 };
 
 VKAPI_ATTR VkBool32 VKAPI_CALL
-vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type,
+vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+                  VkDebugUtilsMessageTypeFlagsEXT type,
                   VkDebugUtilsMessengerCallbackDataEXT const* data, void* /*user_data*/)
 {
     // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
@@ -127,7 +128,8 @@ read_file(std::filesystem::path const& filename)
     auto const size{ std::filesystem::file_size(filename) };
     std::vector<std::byte> buffer{ size };
 
-    file.read(reinterpret_cast<std::ifstream::char_type*>(buffer.data()), static_cast<std::streamsize>(size));
+    file.read(reinterpret_cast<std::ifstream::char_type*>(buffer.data()),
+              static_cast<std::streamsize>(size));
 
     return buffer;
 }
@@ -148,28 +150,33 @@ main()
     auto const debug_utils_messenger{
         [&]() -> vk::raii::DebugUtilsMessengerEXT
         {
-            auto const severity_flags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-                                      vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
+            auto const severity_flags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
+                                      | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
 
-            auto const type_flags(vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-                                  vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-                                  vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+            auto const type_flags(vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
+                                  | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance
+                                  | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
 
             return { vulkan_instance,
-                     { .messageSeverity = severity_flags, .messageType = type_flags, .pfnUserCallback = &vk_debug_callback } };
+                     { .messageSeverity = severity_flags,
+                       .messageType = type_flags,
+                       .pfnUserCallback = &vk_debug_callback } };
         }()
     };
 
     VkSurfaceKHR surface{};
-    if (!SDL_Vulkan_CreateSurface(std::any_cast<SDL_Window*>(window.inner()), *vulkan_instance, nullptr, &surface))
+    if (!SDL_Vulkan_CreateSurface(std::any_cast<SDL_Window*>(window.inner()), *vulkan_instance,
+                                  nullptr, &surface))
     {
-        throw sdl_error{ std::format("SDL_Vulkan_CreateSurface failed with: '{}'", SDL_GetError()) };
+        throw sdl_error{ std::format("SDL_Vulkan_CreateSurface failed with: '{}'",
+                                     SDL_GetError()) };
     }
     scope_exit const destroy_surface{ [&] {
         SDL_Vulkan_DestroySurface(*vulkan_instance, surface, nullptr);
     } };
 
-    vk::raii::PhysicalDevice const physical_device{ vulkan_instance.enumeratePhysicalDevices().at(0) };
+    vk::raii::PhysicalDevice const physical_device{ vulkan_instance.enumeratePhysicalDevices().at(
+        0) };
 
     using queue_family_index_type = std::uint32_t;
 
@@ -177,11 +184,9 @@ main()
         [&]() -> queue_family_index_type
         {
             auto const queue_families{ physical_device.getQueueFamilyProperties() };
-            auto const it{ std::ranges::find_if(queue_families,
-                                                [](auto const props) {
-                                                    return static_cast<bool>(props.queueFlags &
-                                                                             vk::QueueFlagBits::eGraphics);
-                                                }) };
+            auto const it{ std::ranges::find_if(
+                queue_families, [](auto const props)
+                { return static_cast<bool>(props.queueFlags & vk::QueueFlagBits::eGraphics); }) };
 
             assert(it != end(queue_families));
 
@@ -193,10 +198,9 @@ main()
         [&]() -> queue_family_index_type
         {
             auto const queue_families{ physical_device.getQueueFamilyProperties() };
-            auto const it{
-                std::ranges::find_if(queue_families, [&, i = 0](auto const) mutable
-                                     { return physical_device.getSurfaceSupportKHR(i++, surface); })
-            };
+            auto const it{ std::ranges::find_if(
+                queue_families, [&, i = 0](auto const) mutable
+                { return physical_device.getSurfaceSupportKHR(i++, surface); }) };
 
             assert(it != end(queue_families));
 
@@ -209,35 +213,39 @@ main()
                                                  std::vector families{ graphics_queue_family_index,
                                                                        present_queue_family_index };
                                                  std::ranges::sort(families);
-                                                 auto const [first, last] = std::ranges::unique(families);
+                                                 auto const [first, last]
+                                                     = std::ranges::unique(families);
                                                  families.erase(first, last);
 
                                                  return families;
                                              }() };
 
-    auto const device{ [&]() -> vk::raii::Device
-                       {
-                           float const queue_priority{ 1 };
+    auto const device{
+        [&]() -> vk::raii::Device
+        {
+            float const queue_priority{ 1 };
 
-                           std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
-                           for (auto const& qf : unique_queue_families)
-                           {
-                               queue_create_infos.push_back(
-                                   { .queueFamilyIndex = qf, .queueCount = 1, .pQueuePriorities = &queue_priority });
-                           }
+            std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
+            for (auto const& qf : unique_queue_families)
+            {
+                queue_create_infos.push_back({ .queueFamilyIndex = qf,
+                                               .queueCount = 1,
+                                               .pQueuePriorities = &queue_priority });
+            }
 
-                           std::array const device_extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+            std::array const device_extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
-                           vk::DeviceCreateInfo const device_create_info{
-                               .queueCreateInfoCount = static_cast<std::uint32_t>(queue_create_infos.size()),
-                               .pQueueCreateInfos = queue_create_infos.data(),
-                               .enabledExtensionCount = device_extensions.size(),
-                               .ppEnabledExtensionNames = device_extensions.data()
+            vk::DeviceCreateInfo const device_create_info{
+                .queueCreateInfoCount = static_cast<std::uint32_t>(queue_create_infos.size()),
+                .pQueueCreateInfos = queue_create_infos.data(),
+                .enabledExtensionCount = device_extensions.size(),
+                .ppEnabledExtensionNames = device_extensions.data()
 
-                           };
+            };
 
-                           return { physical_device, device_create_info };
-                       }() };
+            return { physical_device, device_create_info };
+        }()
+    };
 
     vk::raii::Queue const graphics_queue{ device.getQueue(graphics_queue_family_index, 0) };
     vk::raii::Queue const present_queue{ device.getQueue(present_queue_family_index, 0) };
@@ -246,8 +254,9 @@ main()
         [&]
         {
             std::vector const formats{ physical_device.getSurfaceFormatsKHR(surface) };
-            auto const fmt{ std::ranges::find(formats, vk::SurfaceFormatKHR{ vk::Format::eB8G8R8A8Srgb,
-                                                                             vk::ColorSpaceKHR::eSrgbNonlinear }) };
+            auto const fmt{ std::ranges::find(
+                formats, vk::SurfaceFormatKHR{ vk::Format::eB8G8R8A8Srgb,
+                                               vk::ColorSpaceKHR::eSrgbNonlinear }) };
 
             assert(fmt != end(formats));
             return *fmt;
@@ -282,9 +291,11 @@ main()
                        .imageExtent = extent,
                        .imageArrayLayers = 1,
                        .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
-                       .imageSharingMode = unique_queue_families.size() == 1 ? vk::SharingMode::eExclusive
-                                                                             : vk::SharingMode::eConcurrent,
-                       .queueFamilyIndexCount = static_cast<std::uint32_t>(unique_queue_families.size()),
+                       .imageSharingMode = unique_queue_families.size() == 1
+                                               ? vk::SharingMode::eExclusive
+                                               : vk::SharingMode::eConcurrent,
+                       .queueFamilyIndexCount
+                       = static_cast<std::uint32_t>(unique_queue_families.size()),
                        .pQueueFamilyIndices = unique_queue_families.data(),
                        .preTransform = surface_capabilities.currentTransform,
                        .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
@@ -342,35 +353,45 @@ main()
 
     vk::PipelineColorBlendAttachmentState const color_blend_attachment_state{
         .blendEnable = vk::False,
-        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
-                          vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA
+        .colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
+                          | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA
     };
 
-    vk::PipelineColorBlendStateCreateInfo const color_blend_state_create_info{ .logicOpEnable = vk::False,
-                                                                               .logicOp = vk::LogicOp::eCopy,
-                                                                               .attachmentCount = 1,
-                                                                               .pAttachments = &color_blend_attachment_state };
+    vk::PipelineColorBlendStateCreateInfo const color_blend_state_create_info{
+        .logicOpEnable = vk::False,
+        .logicOp = vk::LogicOp::eCopy,
+        .attachmentCount = 1,
+        .pAttachments = &color_blend_attachment_state
+    };
 
     vk::raii::PipelineLayout const layout{ device, vk::PipelineLayoutCreateInfo{} };
 
-    vk::AttachmentDescription const attachment_description{ .format = surface_format.format,
-                                                            .samples = vk::SampleCountFlagBits::e1,
-                                                            .loadOp = vk::AttachmentLoadOp::eClear,
-                                                            .storeOp = vk::AttachmentStoreOp::eStore,
-                                                            .initialLayout = vk::ImageLayout::eUndefined,
-                                                            .finalLayout = vk::ImageLayout::ePresentSrcKHR };
+    vk::AttachmentDescription const attachment_description{
+        .format = surface_format.format,
+        .samples = vk::SampleCountFlagBits::e1,
+        .loadOp = vk::AttachmentLoadOp::eClear,
+        .storeOp = vk::AttachmentStoreOp::eStore,
+        .initialLayout = vk::ImageLayout::eUndefined,
+        .finalLayout = vk::ImageLayout::ePresentSrcKHR
+    };
 
-    vk::AttachmentReference const attachment_reference{ .attachment = 0, .layout = vk::ImageLayout::eColorAttachmentOptimal };
+    vk::AttachmentReference const attachment_reference{
+        .attachment = 0,
+        .layout = vk::ImageLayout::eColorAttachmentOptimal
+    };
 
-    vk::SubpassDescription const subpass_description{ .pipelineBindPoint = vk::PipelineBindPoint::eGraphics,
+    vk::SubpassDescription const subpass_description{ .pipelineBindPoint
+                                                      = vk::PipelineBindPoint::eGraphics,
                                                       .colorAttachmentCount = 1,
                                                       .pColorAttachments = &attachment_reference };
 
-    vk::SubpassDependency const subpass_dependency{ .srcSubpass = vk::SubpassExternal,
-                                                    .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
-                                                    .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
-                                                    .srcAccessMask = vk::AccessFlagBits::eNone,
-                                                    .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite };
+    vk::SubpassDependency const subpass_dependency{
+        .srcSubpass = vk::SubpassExternal,
+        .srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        .dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput,
+        .srcAccessMask = vk::AccessFlagBits::eNone,
+        .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite
+    };
 
     vk::raii::RenderPass const render_pass{ device, vk::RenderPassCreateInfo{
                                                         .attachmentCount = 1,
@@ -387,10 +408,10 @@ main()
     };
 
     std::array const dynamic_states{ vk::DynamicState::eViewport, vk::DynamicState::eScissor };
-    vk::PipelineDynamicStateCreateInfo const dynamic_state_create_info{ .dynamicStateCount =
-                                                                            dynamic_states.size(),
-                                                                        .pDynamicStates =
-                                                                            dynamic_states.data() };
+    vk::PipelineDynamicStateCreateInfo const dynamic_state_create_info{ .dynamicStateCount
+                                                                        = dynamic_states.size(),
+                                                                        .pDynamicStates
+                                                                        = dynamic_states.data() };
 
     vk::raii::Pipeline const pipeline{ device, nullptr,
                                        vk::GraphicsPipelineCreateInfo{
@@ -410,21 +431,21 @@ main()
     auto const make_image_views{
         [&]
         {
-            auto const rng =
-                swapchain.getImages() |
-                std::views::transform(
-                    [&](auto const& image) -> vk::raii::ImageView
-                    {
-                        return { device,
-                                 { .image = image,
-                                   .viewType = vk::ImageViewType::e2D,
-                                   .format = surface_format.format,
-                                   .subresourceRange = { .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                                         .baseMipLevel = 0,
-                                                         .levelCount = 1,
-                                                         .baseArrayLayer = 0,
-                                                         .layerCount = 1 } } };
-                    });
+            auto const rng = swapchain.getImages()
+                             | std::views::transform(
+                                 [&](auto const& image) -> vk::raii::ImageView
+                                 {
+                                     return { device,
+                                              { .image = image,
+                                                .viewType = vk::ImageViewType::e2D,
+                                                .format = surface_format.format,
+                                                .subresourceRange
+                                                = { .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                    .baseMipLevel = 0,
+                                                    .levelCount = 1,
+                                                    .baseArrayLayer = 0,
+                                                    .layerCount = 1 } } };
+                                 });
 
             return std::vector(begin(rng), end(rng));
         }
@@ -435,16 +456,17 @@ main()
     auto const make_frame_buffers{
         [&]
         {
-            auto const rng{ image_views |
-                            std::views::transform(
+            auto const rng{ image_views
+                            | std::views::transform(
                                 [&](auto const& view) -> vk::raii::Framebuffer
                                 {
-                                    return { device, vk::FramebufferCreateInfo{ .renderPass = render_pass,
-                                                                                .attachmentCount = 1,
-                                                                                .pAttachments = &*view,
-                                                                                .width = extent.width,
-                                                                                .height = extent.height,
-                                                                                .layers = 1 } };
+                                    return { device,
+                                             vk::FramebufferCreateInfo{ .renderPass = render_pass,
+                                                                        .attachmentCount = 1,
+                                                                        .pAttachments = &*view,
+                                                                        .width = extent.width,
+                                                                        .height = extent.height,
+                                                                        .layers = 1 } };
                                 }) };
 
             return std::vector(begin(rng), end(rng));
@@ -455,8 +477,9 @@ main()
     std::vector frame_buffers{ make_frame_buffers() };
 
     vk::raii::CommandPool const command_pool{
-        device, vk::CommandPoolCreateInfo{ .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-                                           .queueFamilyIndex = graphics_queue_family_index }
+        device,
+        vk::CommandPoolCreateInfo{ .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+                                   .queueFamilyIndex = graphics_queue_family_index }
     };
 
     std::vector const command_buffers{ device.allocateCommandBuffers(
@@ -467,7 +490,8 @@ main()
 
     vk::raii::Semaphore image_available_semaphore{ device, vk::SemaphoreCreateInfo{} };
     vk::raii::Semaphore render_finish_semaphore{ device, vk::SemaphoreCreateInfo{} };
-    vk::raii::Fence fence{ device, vk::FenceCreateInfo{ .flags = vk::FenceCreateFlagBits::eSignaled } };
+    vk::raii::Fence fence{ device,
+                           vk::FenceCreateInfo{ .flags = vk::FenceCreateFlagBits::eSignaled } };
 
     while (true)
     {
@@ -500,7 +524,8 @@ main()
             }
         }
 
-        [[maybe_unused]] auto const [result, image_index]{ swapchain.acquireNextImage(timeout, image_available_semaphore) };
+        [[maybe_unused]] auto const [result, image_index]{ swapchain.acquireNextImage(
+            timeout, image_available_semaphore) };
         assert(vk::Result::eSuccess == result || vk::Result::eSuboptimalKHR == result);
 
         command_buffer.reset();
@@ -530,7 +555,9 @@ main()
         command_buffer.endRenderPass();
         command_buffer.end();
 
-        vk::PipelineStageFlags const stage_flag{ vk::PipelineStageFlagBits::eColorAttachmentOutput };
+        vk::PipelineStageFlags const stage_flag{
+            vk::PipelineStageFlagBits::eColorAttachmentOutput
+        };
         graphics_queue.submit(vk::SubmitInfo{ .waitSemaphoreCount = 1,
                                               .pWaitSemaphores = &*image_available_semaphore,
                                               .pWaitDstStageMask = &stage_flag,
@@ -540,12 +567,12 @@ main()
                                               .pSignalSemaphores = &*render_finish_semaphore },
                               fence);
 
-        [[maybe_unused]] auto const result2 =
-            present_queue.presentKHR({ .waitSemaphoreCount = 1,
-                                       .pWaitSemaphores = &*render_finish_semaphore,
-                                       .swapchainCount = 1,
-                                       .pSwapchains = &*swapchain,
-                                       .pImageIndices = &image_index });
+        [[maybe_unused]] auto const result2
+            = present_queue.presentKHR({ .waitSemaphoreCount = 1,
+                                         .pWaitSemaphores = &*render_finish_semaphore,
+                                         .swapchainCount = 1,
+                                         .pSwapchains = &*swapchain,
+                                         .pImageIndices = &image_index });
         assert(vk::Result::eSuccess == result2 || vk::Result::eSuboptimalKHR == result2);
     }
 
