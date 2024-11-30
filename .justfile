@@ -79,3 +79,20 @@ run: build
 alias r := run
 alias b := build
 alias c := configure
+
+noasan:
+    #!/usr/bin/env bash
+
+    ASAN_OPTIONS="detect_leaks=0" VIRTUAL_ENV="noasan" fish
+
+debug: build
+    #!/usr/bin/env bash
+
+    set -uo pipefail
+
+    . "{{current_config_file}}"
+
+    executable="${ORBI_BUILD_DIR}/$(basename ${ORBI_SRC})"
+    gdb "${executable}"
+
+alias d := debug
