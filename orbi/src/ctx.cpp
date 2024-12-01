@@ -6,11 +6,19 @@
 
 #include <vulkan/vulkan_raii.hpp>
 
+#include <iostream>
 #include <optional>
+#include <sstream>
 #include <utility>
 
 namespace orbi
 {
+
+namespace
+{
+VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT, VkDebugUtilsMessageTypeFlagsEXT,
+                                                 VkDebugUtilsMessengerCallbackDataEXT const*, void*);
+}
 
 struct ctx::impl
 {
@@ -20,6 +28,7 @@ struct ctx::impl
 
         vk::raii::Context vulkan_context;
         vk::raii::Instance vulkan_instance;
+        vk::raii::DebugUtilsMessengerEXT debug_utils_messenger;
     };
 
     std::optional<video> video;
@@ -27,6 +36,7 @@ struct ctx::impl
 
 ctx::impl::video::video(app_info const& app_info)
     : vulkan_instance{ nullptr }
+    , debug_utils_messenger{ nullptr }
 {
     vk::ApplicationInfo const vulkan_app_info{
         .pApplicationName = app_info.name.c_str(),
@@ -62,6 +72,21 @@ ctx::impl::video::video(app_info const& app_info)
 #endif
 
     vulkan_instance = vk::raii::Instance{ vulkan_context, instance_create_info };
+
+    debug_utils_messenger = {
+        [&]() -> vk::raii::DebugUtilsMessengerEXT
+        {
+            auto const severity_flags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
+                                      vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
+
+            auto const type_flags(vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
+                                  vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
+                                  vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+
+            return { vulkan_instance,
+                     { .messageSeverity = severity_flags, .messageType = type_flags, .pfnUserCallback = &vk_debug_callback } };
+        }()
+    };
 }
 
 ctx::subsystem
@@ -158,5 +183,72 @@ ctx::inner_vulkan_instance() noexcept
 
     return res;
 }
+
+namespace
+{
+VKAPI_ATTR VkBool32 VKAPI_CALL
+vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type,
+                  VkDebugUtilsMessengerCallbackDataEXT const* data, void* /*user_data*/)
+{
+    // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    std::ostringstream message;
+
+    // clang-format off
+        message << std::format("{}: {}:\n"
+                               "\tmessageIdName = <{}>\n"
+                               "\tmessageIdNumber = <{:#x}>\n"
+                               "\tmessage = <{}>\n",
+                               vk::to_string(static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(severity)),
+                               vk::to_string(static_cast<vk::DebugUtilsMessageTypeFlagsEXT>(type)),
+                               data->pMessageIdName,
+                               data->messageIdNumber,
+                               data->pMessage);
+    // clang-format on
+
+    if (data->queueLabelCount > 0)
+    {
+        message << "\tQueue Labels:\n";
+        for (uint32_t i{ 0 }; i < data->queueLabelCount; i++)
+        {
+            message << std::format("\t\tlabelName = <{}>\n", data->pQueueLabels[i].pLabelName);
+        }
+    }
+
+    if (data->cmdBufLabelCount > 0)
+    {
+        message << "\tCommandBuffer Labels:\n";
+        for (uint32_t i = 0; i < data->cmdBufLabelCount; i++)
+        {
+            message << std::format("\t\tlabelName = <{}>\n", data->pCmdBufLabels[i].pLabelName);
+        }
+    }
+
+    if (data->objectCount > 0)
+    {
+        message << std::format("\tObjects:\n");
+        for (uint32_t i{ 0 }; i < data->objectCount; i++)
+        {
+            // clang-format off
+                message << std::format("\t\tObject {}\n"
+                                       "\t\t\tobjectType = {}\n"
+                                       "\t\t\tobjectHandle = {:#x}\n",
+                                       i,
+                                       vk::to_string(static_cast<vk::ObjectType>(data->pObjects[i].objectType)),
+                                       data->pObjects[i].objectHandle);
+
+                if (data->pObjects[i].pObjectName)
+                {
+                    message << std::format("\t\t\tobjectName = <{}>\n", data->pObjects[i].pObjectName);
+                }
+            // clang-format on
+        }
+    }
+
+    std::cout << message.str() << std::endl;
+
+    return false;
+    // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+}
+} // namespace
 
 } // namespace orbi

@@ -12,9 +12,7 @@
 #include <format>
 #include <fstream>
 #include <functional>
-#include <iostream>
 #include <ranges>
-#include <sstream>
 #include <stdexcept>
 
 template <typename Fn>
@@ -39,70 +37,6 @@ public:
 private:
     Fn fn;
 };
-
-VKAPI_ATTR VkBool32 VKAPI_CALL
-vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type,
-                  VkDebugUtilsMessengerCallbackDataEXT const* data, void* /*user_data*/)
-{
-    // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    std::ostringstream message;
-
-    // clang-format off
-    message << std::format("{}: {}:\n"
-                           "\tmessageIdName = <{}>\n"
-                           "\tmessageIdNumber = <{:#x}>\n"
-                           "\tmessage = <{}>\n",
-                           vk::to_string(static_cast<vk::DebugUtilsMessageSeverityFlagBitsEXT>(severity)),
-                           vk::to_string(static_cast<vk::DebugUtilsMessageTypeFlagsEXT>(type)),
-                           data->pMessageIdName,
-                           data->messageIdNumber,
-                           data->pMessage);
-    // clang-format on
-
-    if (data->queueLabelCount > 0)
-    {
-        message << "\tQueue Labels:\n";
-        for (uint32_t i{ 0 }; i < data->queueLabelCount; i++)
-        {
-            message << std::format("\t\tlabelName = <{}>\n", data->pQueueLabels[i].pLabelName);
-        }
-    }
-
-    if (data->cmdBufLabelCount > 0)
-    {
-        message << "\tCommandBuffer Labels:\n";
-        for (uint32_t i = 0; i < data->cmdBufLabelCount; i++)
-        {
-            message << std::format("\t\tlabelName = <{}>\n", data->pCmdBufLabels[i].pLabelName);
-        }
-    }
-
-    if (data->objectCount > 0)
-    {
-        message << std::format("\tObjects:\n");
-        for (uint32_t i{ 0 }; i < data->objectCount; i++)
-        {
-            // clang-format off
-            message << std::format("\t\tObject {}\n"
-                                   "\t\t\tobjectType = {}\n"
-                                   "\t\t\tobjectHandle = {:#x}\n",
-                                   i,
-                                   vk::to_string(static_cast<vk::ObjectType>(data->pObjects[i].objectType)),
-                                   data->pObjects[i].objectHandle);
-
-            if (data->pObjects[i].pObjectName)
-            {
-                message << std::format("\t\t\tobjectName = <{}>\n", data->pObjects[i].pObjectName);
-            }
-            // clang-format on
-        }
-    }
-
-    std::cout << message.str() << std::endl;
-
-    return false;
-    // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-}
 
 struct sdl_error : std::runtime_error
 {
@@ -143,21 +77,6 @@ main()
     // so.. bad code should be ugly)
     auto& vulkan_instance{
         std::any_cast<std::reference_wrapper<vk::raii::Instance>>(ctx.inner_vulkan_instance()).get()
-    };
-
-    auto const debug_utils_messenger{
-        [&]() -> vk::raii::DebugUtilsMessengerEXT
-        {
-            auto const severity_flags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-                                      vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
-
-            auto const type_flags(vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-                                  vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-                                  vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
-
-            return { vulkan_instance,
-                     { .messageSeverity = severity_flags, .messageType = type_flags, .pfnUserCallback = &vk_debug_callback } };
-        }()
     };
 
     VkSurfaceKHR surface{};
