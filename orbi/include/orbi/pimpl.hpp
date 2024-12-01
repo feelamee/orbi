@@ -16,7 +16,7 @@ public:
     {
         validate();
 
-        std::destroy_at(data.data());
+        std::destroy_at(as_held());
     }
 
     pimpl(pimpl const& other)
