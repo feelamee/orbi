@@ -63,19 +63,32 @@ operator|(window::flag const l, window::flag const r)
     return static_cast<window::flag>(detail::to_underlying(l) | detail::to_underlying(r));
 }
 
+window::flag&
+operator|=(window::flag& l, window::flag const r)
+{
+    return l = l | r;
+}
+
 window::flag
 operator&(window::flag l, window::flag r)
 {
     return static_cast<window::flag>(detail::to_underlying(l) & detail::to_underlying(r));
 }
 
-void
-window::set(flag const flags)
+window::set_error
+window::set(flag const flags) noexcept
 {
+    set_error err{};
+
     if (bool(flags & flag::resizable))
     {
-        SDL_SetWindowResizable(pimpl->window, true);
+        if (!SDL_SetWindowResizable(pimpl->window, true))
+        {
+            err |= set_error::resizable;
+        }
     }
+
+    return err;
 }
 
 } // namespace orbi

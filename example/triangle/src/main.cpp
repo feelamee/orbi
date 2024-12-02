@@ -73,7 +73,7 @@ main()
                    { .name = "probably triangle", .version = orbi::version{ 0, 1, 0 } } };
 
     orbi::window window{ ctx };
-    window.set(orbi::window::flag::resizable);
+    assert(!bool(window.set(orbi::window::flag::resizable)));
 
     // so.. bad code should be ugly)
     auto& vulkan_instance{
