@@ -186,7 +186,30 @@ main()
     };
 
     auto const surface_capabilities{ physical_device.getSurfaceCapabilitiesKHR(surface) };
-    vk::Extent2D extent{ surface_capabilities.currentExtent };
+    vk::Extent2D const default_extent{ 500, 500 };
+
+    auto const make_extent{ [&]() -> vk::Extent2D
+                            {
+                                vk::Extent2D extent =
+                                    physical_device.getSurfaceCapabilitiesKHR(surface).currentExtent;
+                                bool const is_extent_should_be_determined_by_swapchain =
+                                    extent == vk::Extent2D{ 0xFFFFFFFF, 0xFFFFFFFF };
+
+                                if (is_extent_should_be_determined_by_swapchain)
+                                {
+                                    extent = default_extent;
+                                } else
+                                {
+                                    assert(extent.height >= surface_capabilities.minImageExtent.height);
+                                    assert(extent.height <= surface_capabilities.maxImageExtent.height);
+                                    assert(extent.width >= surface_capabilities.minImageExtent.width);
+                                    assert(extent.width <= surface_capabilities.maxImageExtent.width);
+                                }
+
+                                return extent;
+                            } };
+
+    vk::Extent2D extent{ make_extent() };
 
     auto const make_swapchain{
         [&]() -> vk::raii::SwapchainKHR
@@ -409,7 +432,7 @@ main()
                 return EXIT_SUCCESS;
 
             case SDL_EVENT_WINDOW_RESIZED:
-                extent = physical_device.getSurfaceCapabilitiesKHR(surface).currentExtent;
+                extent = make_extent();
                 swapchain = make_swapchain();
                 image_views = make_image_views();
                 frame_buffers = make_frame_buffers();
