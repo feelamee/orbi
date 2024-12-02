@@ -57,4 +57,25 @@ window::inner() noexcept
     return pimpl->window;
 }
 
+window::flag
+operator|(window::flag const l, window::flag const r)
+{
+    return static_cast<window::flag>(detail::to_underlying(l) | detail::to_underlying(r));
+}
+
+window::flag
+operator&(window::flag l, window::flag r)
+{
+    return static_cast<window::flag>(detail::to_underlying(l) & detail::to_underlying(r));
+}
+
+void
+window::set(flag const flags)
+{
+    if (bool(flags & flag::resizable))
+    {
+        SDL_SetWindowResizable(pimpl->window, true);
+    }
+}
+
 } // namespace orbi

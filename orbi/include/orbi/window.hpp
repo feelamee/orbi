@@ -38,6 +38,15 @@ public:
     // TODO remove; created only to postpone design of api for creating surface
     std::any inner() noexcept;
 
+    enum class flag
+    {
+        resizable = 0x1,
+    };
+    friend flag operator|(flag, flag);
+    friend flag operator&(flag, flag);
+
+    void set(flag);
+
 private:
     struct impl;
 
