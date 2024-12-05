@@ -6,7 +6,7 @@ enable_sanitizer_flags := "-DORBI_SANITIZER=ON -DORBI_PEDANTIC=ON"
 build_dir := working_dir / "build"
 current_config_file := build_dir / "current"
 
-configure src="test/" build_type="dbg" platform=os() rebuild="false" sanitizer="true":
+configure src="test/" build_type="dbg" platform=os() rebuild="false" sanitizer="false":
     #!/usr/bin/env bash
 
     set -uo pipefail
@@ -60,7 +60,8 @@ build: _check_current_file
 
     [[ $? != 0 ]] && exit 2
 
-    cp "${ORBI_BUILD_DIR}/compile_commands.json" {{working_dir}}
+    rm -f "{{working_dir}}/compile_commands.json"
+    ln -s "${ORBI_BUILD_DIR}/compile_commands.json" {{working_dir}}
 
     exit $?
 
