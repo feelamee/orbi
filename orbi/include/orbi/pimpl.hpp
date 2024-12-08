@@ -9,7 +9,7 @@ public:
     template <class... Args>
     pimpl(Args&&... args)
     {
-        std::construct_at(data.data(), std::forward<Args>(args)...);
+        std::construct_at(reinterpret_cast<T*>(data.data()), std::forward<Args>(args)...);
     }
 
     ~pimpl()
