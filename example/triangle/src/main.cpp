@@ -12,6 +12,7 @@
 #include <format>
 #include <fstream>
 #include <functional>
+#include <iostream>
 #include <ranges>
 #include <stdexcept>
 
@@ -66,8 +67,31 @@ read_file(std::filesystem::path const& filename)
     return buffer;
 }
 
+void
+handle_nested_exceptions(std::exception const& e, int level = 0)
+{
+    if (level == 0)
+    {
+        std::cerr << "Exception was thrown:\n";
+        ++level;
+    }
+
+    for (auto _ : std::views::iota(0, level)) std::cerr << "    ";
+    std::cerr << "what(): " << e.what() << '\n';
+
+    try
+    {
+        std::rethrow_if_nested(e);
+    }
+    catch (std::exception const& e)
+    {
+        handle_nested_exceptions(e, level + 1);
+    }
+}
+
 int
 main()
+try
 {
     orbi::ctx ctx{ orbi::ctx::subsystem::video | orbi::ctx::subsystem::event,
                    { .name = "probably triangle", .version = orbi::version{ 0, 1, 0 } } };
@@ -495,4 +519,8 @@ main()
     device.waitIdle();
 
     return EXIT_SUCCESS;
+}
+catch (std::exception const& e)
+{
+    handle_nested_exceptions(e);
 }

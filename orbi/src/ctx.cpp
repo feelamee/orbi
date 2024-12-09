@@ -35,8 +35,7 @@ struct ctx::impl
 };
 
 ctx::impl::video::video(app_info const& app_info)
-    : vulkan_instance{ nullptr }
-    , debug_utils_messenger{ nullptr }
+try : vulkan_instance{ nullptr }, debug_utils_messenger{ nullptr }
 {
     vk::ApplicationInfo const vulkan_app_info{
         .pApplicationName = app_info.name.c_str(),
@@ -65,7 +64,7 @@ ctx::impl::video::video(app_info const& app_info)
     instance_create_info.ppEnabledExtensionNames = extensions.data();
 
 #ifndef NDEBUG
-    std::array<char const* const, 1> const layers{ "VK_LAYER_KHRONOS_validation" };
+    std::array const layers{ "VK_LAYER_KHRONOS_validation" };
 
     instance_create_info.enabledLayerCount = layers.size();
     instance_create_info.ppEnabledLayerNames = layers.data();
@@ -87,6 +86,10 @@ ctx::impl::video::video(app_info const& app_info)
                      { .messageSeverity = severity_flags, .messageType = type_flags, .pfnUserCallback = &vk_debug_callback } };
         }()
     };
+}
+catch (...)
+{
+    std::throw_with_nested(error{ "ctx::ctx: Internal call to vulkan failed" });
 }
 
 ctx::subsystem
