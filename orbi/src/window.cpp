@@ -1,7 +1,12 @@
+#include <orbi/ctx.hpp>
 #include <orbi/detail/util.hpp>
+#include <orbi/device.hpp>
 #include <orbi/window.hpp>
 
 #include <SDL3/SDL_video.h>
+#include <SDL3/SDL_vulkan.h>
+
+#include <vulkan/vulkan_raii.hpp>
 
 #include <utility>
 
@@ -11,22 +16,45 @@ namespace orbi
 struct window::impl
 {
     SDL_Window* window{ nullptr };
+    ctx const* ctx{ nullptr };
+    VkSurfaceKHR surface{};
+
+    VkInstance
+    vulkan_instance() const
+    {
+        using type = std::reference_wrapper<vk::raii::Instance const>;
+        return *std::any_cast<type>(ctx->inner_vulkan_instance()).get();
+    }
 };
 
-window::window(ctx const& /*ctx*/)
+window::window(ctx const& ctx)
 {
     pimpl->window = SDL_CreateWindow("default window name", 500, 500, SDL_WINDOW_VULKAN);
     if (!pimpl->window)
     {
         throw error{ "SDL_CreateWindow failed with: '{}'", SDL_GetError() };
     }
+
+    pimpl->ctx = &ctx;
+
+    if (!SDL_Vulkan_CreateSurface(pimpl->window, pimpl->vulkan_instance(), nullptr, &pimpl->surface))
+    {
+        throw error{ "SDL_Vulkan_CreateSurface failed with: '{}'", SDL_GetError() };
+    }
 }
 
 window::~window()
 {
+    // TODO: think about store ref instead of pointer to say more consistently
+    //       that it can't be `nullptr`
     if (pimpl->window)
     {
         SDL_DestroyWindow(pimpl->window);
+    }
+
+    if (pimpl->surface)
+    {
+        SDL_Vulkan_DestroySurface(pimpl->vulkan_instance(), pimpl->surface, nullptr);
     }
 }
 
@@ -89,6 +117,12 @@ window::set(flag const flags) noexcept
     }
 
     return err;
+}
+
+std::any
+window::inner_vulkan_surface() const
+{
+    return pimpl->surface;
 }
 
 } // namespace orbi

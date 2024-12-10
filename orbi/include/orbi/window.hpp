@@ -58,10 +58,16 @@ public:
 
     set_error set(flag) noexcept;
 
+    // TODO remove; created only to postpone design of api
+    /*
+        @return `VkSurface`
+    */
+    std::any inner_vulkan_surface() const;
+
 private:
     struct impl;
 
-    pimpl<impl, 8, 8> pimpl;
+    pimpl<impl, 24, 8> pimpl;
 };
 
 } // namespace orbi
