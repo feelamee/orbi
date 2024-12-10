@@ -25,7 +25,7 @@ public:
         @pre `ctx` must outlive `*this`
         @throw `window::error`
     */
-    window(ctx const&);
+    explicit window(ctx const&);
     ~window();
 
     window(window&&);
