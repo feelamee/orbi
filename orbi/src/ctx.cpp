@@ -175,7 +175,7 @@ ctx::inner_vulkan_context() noexcept
 }
 
 std::any
-ctx::inner_vulkan_instance() noexcept
+ctx::inner_vulkan_instance() const noexcept
 {
     std::any res;
 

@@ -59,11 +59,11 @@ public:
     */
     std::any inner_vulkan_context() noexcept;
     /*
-        @return `std::reference_wrapper<vk::raii::Instance>`
+        @return `std::reference_wrapper<vk::raii::Instance const>`
                 if `ctx` was initialized with `subsystem::video`.
                 Else `ret.has_value() == false`, where `ret` is returned object
     */
-    std::any inner_vulkan_instance() noexcept;
+    std::any inner_vulkan_instance() const noexcept;
 
 private:
     bool need_release_resource{ true };

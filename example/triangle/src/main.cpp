@@ -100,8 +100,8 @@ try
     assert(!bool(window.set(orbi::window::flag::resizable)));
 
     // so.. bad code should be ugly)
-    auto& vulkan_instance{
-        std::any_cast<std::reference_wrapper<vk::raii::Instance>>(ctx.inner_vulkan_instance()).get()
+    auto const& vulkan_instance{
+        std::any_cast<std::reference_wrapper<vk::raii::Instance const>>(ctx.inner_vulkan_instance()).get()
     };
 
     VkSurfaceKHR surface{};
