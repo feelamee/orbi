@@ -1,4 +1,5 @@
 #include <orbi/ctx.hpp>
+#include <orbi/device.hpp>
 #include <orbi/window.hpp>
 
 #include <SDL3/SDL.h>
@@ -9,49 +10,10 @@
 
 #include <cstdlib>
 #include <filesystem>
-#include <format>
 #include <fstream>
 #include <functional>
 #include <iostream>
 #include <ranges>
-#include <stdexcept>
-
-template <typename Fn>
-struct scope_exit
-{
-public:
-    scope_exit(scope_exit const&) = delete;
-    scope_exit(scope_exit&&) = delete;
-    scope_exit& operator=(scope_exit const&) = delete;
-    scope_exit& operator=(scope_exit&&) = delete;
-
-    scope_exit(Fn&& f)
-        : fn{ f }
-    {
-    }
-
-    ~scope_exit()
-    {
-        std::invoke(std::move(fn));
-    }
-
-private:
-    Fn fn;
-};
-
-struct sdl_error : std::runtime_error
-{
-
-    explicit sdl_error(std::string const& msg)
-        : runtime_error{ msg }
-    {
-    }
-
-    sdl_error(char const* msg)
-        : runtime_error{ msg }
-    {
-    }
-};
 
 std::vector<std::byte>
 read_file(std::filesystem::path const& filename)
@@ -93,61 +55,29 @@ int
 main()
 try
 {
-    orbi::ctx ctx{ orbi::ctx::subsystem::video | orbi::ctx::subsystem::event,
-                   { .name = "probably triangle", .version = orbi::version{ 0, 1, 0 } } };
+    using namespace orbi;
 
-    orbi::window window{ ctx };
-    assert(!bool(window.set(orbi::window::flag::resizable)));
+    ctx ctx{ ctx::subsystem::video | ctx::subsystem::event,
+             { .name = "probably triangle", .version = version{ 0, 1, 0 } } };
+
+    window window{ ctx };
+    assert(!bool(window.set(window::flag::resizable)));
 
     // so.. bad code should be ugly)
     auto const& vulkan_instance{
         std::any_cast<std::reference_wrapper<vk::raii::Instance const>>(ctx.inner_vulkan_instance()).get()
     };
 
-    VkSurfaceKHR surface{};
-    if (!SDL_Vulkan_CreateSurface(std::any_cast<SDL_Window*>(window.inner()), *vulkan_instance, nullptr, &surface))
-    {
-        throw sdl_error{ std::format("SDL_Vulkan_CreateSurface failed with: '{}'", SDL_GetError()) };
-    }
-    scope_exit const destroy_surface{ [&] {
-        SDL_Vulkan_DestroySurface(*vulkan_instance, surface, nullptr);
-    } };
+    device device{ ctx, window };
 
-    vk::raii::PhysicalDevice const physical_device{ vulkan_instance.enumeratePhysicalDevices().at(0) };
-
-    using queue_family_index_type = std::uint32_t;
-
-    auto const graphics_queue_family_index{
-        [&]() -> queue_family_index_type
-        {
-            auto const queue_families{ physical_device.getQueueFamilyProperties() };
-            auto const it{ std::ranges::find_if(queue_families,
-                                                [](auto const props) {
-                                                    return static_cast<bool>(props.queueFlags &
-                                                                             vk::QueueFlagBits::eGraphics);
-                                                }) };
-
-            assert(it != end(queue_families));
-
-            return it - begin(queue_families);
-        }()
+    auto const& vulkan_device{
+        std::any_cast<std::reference_wrapper<vk::raii::Device const>>(device.inner_vulkan_device()).get()
     };
-
-    auto const present_queue_family_index{
-        [&]() -> queue_family_index_type
-        {
-            auto const queue_families{ physical_device.getQueueFamilyProperties() };
-            auto const it{
-                std::ranges::find_if(queue_families, [&, i = 0](auto const) mutable
-                                     { return physical_device.getSurfaceSupportKHR(i++, surface); })
-            };
-
-            assert(it != end(queue_families));
-
-            return it - begin(queue_families);
-        }()
-    };
-
+    auto const surface{ std::any_cast<VkSurfaceKHR>(window.inner_vulkan_surface()) };
+    auto const vulkan_physical_device{ std::any_cast<vk::raii::PhysicalDevice>(
+        device.inner_vulkan_physical_device()) };
+    auto const graphics_queue_family_index{ device.inner_vulkan_queue_family_index(device::queue_family::graphics) };
+    auto const present_queue_family_index{ device.inner_vulkan_queue_family_index(device::queue_family::present) };
     std::vector const unique_queue_families{ [&]
                                              {
                                                  std::vector families{ graphics_queue_family_index,
@@ -159,37 +89,14 @@ try
                                                  return families;
                                              }() };
 
-    auto const device{ [&]() -> vk::raii::Device
-                       {
-                           float const queue_priority{ 1 };
-
-                           std::vector<vk::DeviceQueueCreateInfo> queue_create_infos;
-                           for (auto const& qf : unique_queue_families)
-                           {
-                               queue_create_infos.push_back(
-                                   { .queueFamilyIndex = qf, .queueCount = 1, .pQueuePriorities = &queue_priority });
-                           }
-
-                           std::array const device_extensions{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
-
-                           vk::DeviceCreateInfo const device_create_info{
-                               .queueCreateInfoCount = static_cast<std::uint32_t>(queue_create_infos.size()),
-                               .pQueueCreateInfos = queue_create_infos.data(),
-                               .enabledExtensionCount = device_extensions.size(),
-                               .ppEnabledExtensionNames = device_extensions.data()
-
-                           };
-
-                           return { physical_device, device_create_info };
-                       }() };
-
-    vk::raii::Queue const graphics_queue{ device.getQueue(graphics_queue_family_index, 0) };
-    vk::raii::Queue const present_queue{ device.getQueue(present_queue_family_index, 0) };
+    vk::raii::Queue const graphics_queue{ vulkan_device.getQueue(graphics_queue_family_index, 0) };
+    vk::raii::Queue const present_queue{ vulkan_device.getQueue(present_queue_family_index, 0) };
 
     auto const surface_format{
         [&]
         {
-            std::vector const formats{ physical_device.getSurfaceFormatsKHR(surface) };
+            std::vector const formats{ vulkan_physical_device.getSurfaceFormatsKHR(surface) };
+
             auto const fmt{ std::ranges::find(formats, vk::SurfaceFormatKHR{ vk::Format::eB8G8R8A8Srgb,
                                                                              vk::ColorSpaceKHR::eSrgbNonlinear }) };
 
@@ -201,7 +108,7 @@ try
     auto const surface_present_mode{
         [&]
         {
-            std::vector const modes{ physical_device.getSurfacePresentModesKHR(surface) };
+            std::vector const modes{ vulkan_physical_device.getSurfacePresentModesKHR(surface) };
             auto const mode{ std::ranges::find(modes, vk::PresentModeKHR::eFifo) };
 
             assert(mode != end(modes));
@@ -209,13 +116,13 @@ try
         }()
     };
 
-    auto const surface_capabilities{ physical_device.getSurfaceCapabilitiesKHR(surface) };
+    auto const surface_capabilities{ vulkan_physical_device.getSurfaceCapabilitiesKHR(surface) };
     vk::Extent2D const default_extent{ 500, 500 };
 
     auto const make_extent{ [&]() -> vk::Extent2D
                             {
                                 vk::Extent2D extent =
-                                    physical_device.getSurfaceCapabilitiesKHR(surface).currentExtent;
+                                    vulkan_physical_device.getSurfaceCapabilitiesKHR(surface).currentExtent;
                                 bool const is_extent_should_be_determined_by_swapchain =
                                     extent == vk::Extent2D{ 0xFFFFFFFF, 0xFFFFFFFF };
 
@@ -238,7 +145,7 @@ try
     auto const make_swapchain{
         [&]() -> vk::raii::SwapchainKHR
         {
-            return { device,
+            return { vulkan_device,
                      { .surface = surface,
                        .minImageCount = std::clamp(3u, surface_capabilities.minImageCount,
                                                    surface_capabilities.maxImageCount == 0
@@ -265,12 +172,12 @@ try
     auto const vertex_shader_bytecode{ read_file(res_dir / "triangle.vert.spv") };
     auto const fragment_shader_bytecode{ read_file(res_dir / "triangle.frag.spv") };
 
-    vk::raii::ShaderModule const vertex_shader{ device,
+    vk::raii::ShaderModule const vertex_shader{ vulkan_device,
                                                 { .codeSize = vertex_shader_bytecode.size(),
                                                   .pCode = reinterpret_cast<std::uint32_t const*>(
                                                       vertex_shader_bytecode.data()) } };
 
-    vk::raii::ShaderModule const fragment_shader{ device,
+    vk::raii::ShaderModule const fragment_shader{ vulkan_device,
                                                   { .codeSize = fragment_shader_bytecode.size(),
                                                     .pCode = reinterpret_cast<std::uint32_t const*>(
                                                         fragment_shader_bytecode.data()) } };
@@ -318,7 +225,7 @@ try
                                                                                .attachmentCount = 1,
                                                                                .pAttachments = &color_blend_attachment_state };
 
-    vk::raii::PipelineLayout const layout{ device, vk::PipelineLayoutCreateInfo{} };
+    vk::raii::PipelineLayout const layout{ vulkan_device, vk::PipelineLayoutCreateInfo{} };
 
     vk::AttachmentDescription const attachment_description{ .format = surface_format.format,
                                                             .samples = vk::SampleCountFlagBits::e1,
@@ -339,13 +246,13 @@ try
                                                     .srcAccessMask = vk::AccessFlagBits::eNone,
                                                     .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite };
 
-    vk::raii::RenderPass const render_pass{ device, vk::RenderPassCreateInfo{
-                                                        .attachmentCount = 1,
-                                                        .pAttachments = &attachment_description,
-                                                        .subpassCount = 1,
-                                                        .pSubpasses = &subpass_description,
-                                                        .dependencyCount = 1,
-                                                        .pDependencies = &subpass_dependency } };
+    vk::raii::RenderPass const render_pass{ vulkan_device, vk::RenderPassCreateInfo{
+                                                               .attachmentCount = 1,
+                                                               .pAttachments = &attachment_description,
+                                                               .subpassCount = 1,
+                                                               .pSubpasses = &subpass_description,
+                                                               .dependencyCount = 1,
+                                                               .pDependencies = &subpass_dependency } };
 
     vk::PipelineMultisampleStateCreateInfo const multisample_state_create_info{
         .rasterizationSamples = vk::SampleCountFlagBits::e1,
@@ -359,7 +266,7 @@ try
                                                                         .pDynamicStates =
                                                                             dynamic_states.data() };
 
-    vk::raii::Pipeline const pipeline{ device, nullptr,
+    vk::raii::Pipeline const pipeline{ vulkan_device, nullptr,
                                        vk::GraphicsPipelineCreateInfo{
                                            .stageCount = shader_stage_create_infos.size(),
                                            .pStages = shader_stage_create_infos.data(),
@@ -382,7 +289,7 @@ try
                 std::views::transform(
                     [&](auto const& image) -> vk::raii::ImageView
                     {
-                        return { device,
+                        return { vulkan_device,
                                  { .image = image,
                                    .viewType = vk::ImageViewType::e2D,
                                    .format = surface_format.format,
@@ -402,17 +309,17 @@ try
     auto const make_frame_buffers{
         [&]
         {
-            auto const rng{ image_views |
-                            std::views::transform(
-                                [&](auto const& view) -> vk::raii::Framebuffer
-                                {
-                                    return { device, vk::FramebufferCreateInfo{ .renderPass = render_pass,
-                                                                                .attachmentCount = 1,
-                                                                                .pAttachments = &*view,
-                                                                                .width = extent.width,
-                                                                                .height = extent.height,
-                                                                                .layers = 1 } };
-                                }) };
+            auto const rng{ image_views | std::views::transform(
+                                              [&](auto const& view) -> vk::raii::Framebuffer
+                                              {
+                                                  return { vulkan_device, vk::FramebufferCreateInfo{
+                                                                              .renderPass = render_pass,
+                                                                              .attachmentCount = 1,
+                                                                              .pAttachments = &*view,
+                                                                              .width = extent.width,
+                                                                              .height = extent.height,
+                                                                              .layers = 1 } };
+                                              }) };
 
             return std::vector(begin(rng), end(rng));
         }
@@ -422,30 +329,30 @@ try
     std::vector frame_buffers{ make_frame_buffers() };
 
     vk::raii::CommandPool const command_pool{
-        device, vk::CommandPoolCreateInfo{ .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-                                           .queueFamilyIndex = graphics_queue_family_index }
+        vulkan_device, vk::CommandPoolCreateInfo{ .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+                                                  .queueFamilyIndex = graphics_queue_family_index }
     };
 
-    std::vector const command_buffers{ device.allocateCommandBuffers(
+    std::vector const command_buffers{ vulkan_device.allocateCommandBuffers(
         vk::CommandBufferAllocateInfo{ .commandPool = command_pool,
                                        .level = vk::CommandBufferLevel::ePrimary,
                                        .commandBufferCount = 1 }) };
     auto const& command_buffer{ command_buffers.at(0) };
 
-    vk::raii::Semaphore image_available_semaphore{ device, vk::SemaphoreCreateInfo{} };
-    vk::raii::Semaphore render_finish_semaphore{ device, vk::SemaphoreCreateInfo{} };
-    vk::raii::Fence fence{ device, vk::FenceCreateInfo{ .flags = vk::FenceCreateFlagBits::eSignaled } };
+    vk::raii::Semaphore image_available_semaphore{ vulkan_device, vk::SemaphoreCreateInfo{} };
+    vk::raii::Semaphore render_finish_semaphore{ vulkan_device, vk::SemaphoreCreateInfo{} };
+    vk::raii::Fence fence{ vulkan_device, vk::FenceCreateInfo{ .flags = vk::FenceCreateFlagBits::eSignaled } };
 
     while (true)
     {
         auto constexpr timeout{ 3'000'000'000 /* std::numeric_limits<std::uint64_t>::max() */ };
 
         {
-            [[maybe_unused]] auto const result{ device.waitForFences(*fence, vk::True, timeout) };
+            [[maybe_unused]] auto const result{ vulkan_device.waitForFences(*fence, vk::True, timeout) };
             assert(vk::Result::eSuccess == result);
         }
 
-        device.resetFences(*fence);
+        vulkan_device.resetFences(*fence);
 
         SDL_Event ev{};
         while (SDL_PollEvent(&ev))
@@ -516,7 +423,7 @@ try
         assert(vk::Result::eSuccess == result2 || vk::Result::eSuboptimalKHR == result2);
     }
 
-    device.waitIdle();
+    vulkan_device.waitIdle();
 
     return EXIT_SUCCESS;
 }

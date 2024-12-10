@@ -24,7 +24,9 @@ target_sources(
           "${include_dir}/orbi/window.hpp"
           "src/window.cpp"
           "${include_dir}/orbi/pimpl.hpp"
-          "${include_dir}/orbi/version.hpp")
+          "${include_dir}/orbi/version.hpp"
+          "${include_dir}/orbi/device.hpp"
+          "src/device.cpp")
 target_compile_features(orbi PUBLIC cxx_std_20)
 target_include_directories(orbi PUBLIC "${include_dir}")
 target_link_libraries(orbi PRIVATE $<$<BOOL:${ANDROID}>:anroid log>)
