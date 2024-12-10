@@ -1,5 +1,6 @@
 #pragma once
 
+#include <orbi/detail/util.hpp>
 #include <orbi/exception.hpp>
 #include <orbi/pimpl.hpp>
 
@@ -10,7 +11,7 @@ namespace orbi
 
 struct ctx;
 
-struct window
+struct window : detail::noncopyable
 {
 public:
     // TODO unify error types of whole class to one enum
@@ -31,9 +32,6 @@ public:
     window& operator=(window);
 
     window& operator=(window&&) = delete;
-
-    window(window const&) = delete;
-    window& operator=(window const&) = delete;
 
     friend void swap(window&, window&) noexcept;
 

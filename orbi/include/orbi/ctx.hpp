@@ -1,5 +1,6 @@
 #pragma once
 
+#include <orbi/detail/util.hpp>
 #include <orbi/exception.hpp>
 #include <orbi/pimpl.hpp>
 #include <orbi/version.hpp>
@@ -16,7 +17,7 @@ struct app_info
     version version{ 0, 1, 0 };
 };
 
-struct ctx
+struct ctx : detail::noncopyable
 {
 public:
     struct error : runtime_error
@@ -47,9 +48,6 @@ public:
 
     // TODO what about mixins? like `noncopyable`, `nonmoveable`, etc
     ctx& operator=(ctx&&) = delete;
-
-    ctx(ctx const&) = delete;
-    ctx& operator=(ctx const&) = delete;
 
     friend void swap(ctx&, ctx&) noexcept;
 
