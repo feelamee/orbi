@@ -61,21 +61,16 @@ try
              { .name = "probably triangle", .version = version{ 0, 1, 0 } } };
 
     window window{ ctx };
-    assert(!bool(window.set(window::flag::resizable)));
-
-    // so.. bad code should be ugly)
-    auto const& vulkan_instance{
-        std::any_cast<std::reference_wrapper<vk::raii::Instance const>>(ctx.inner_vulkan_instance()).get()
-    };
+    {
+        auto const ec = window.set(window::flag::resizable);
+        assert(!bool(ec));
+    }
 
     device device{ ctx, window };
 
-    auto const& vulkan_device{
-        std::any_cast<std::reference_wrapper<vk::raii::Device const>>(device.inner_vulkan_device()).get()
-    };
-    auto const surface{ std::any_cast<VkSurfaceKHR>(window.inner_vulkan_surface()) };
-    auto const vulkan_physical_device{ std::any_cast<vk::raii::PhysicalDevice>(
-        device.inner_vulkan_physical_device()) };
+    auto const& vulkan_device{ device.inner_vulkan_device() };
+    auto const surface{ window.inner_vulkan_surface() };
+    auto const& vulkan_physical_device{ device.inner_vulkan_physical_device() };
     auto const graphics_queue_family_index{ device.inner_vulkan_queue_family_index(device::queue_family::graphics) };
     auto const present_queue_family_index{ device.inner_vulkan_queue_family_index(device::queue_family::present) };
     std::vector const unique_queue_families{ [&]

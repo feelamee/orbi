@@ -22,8 +22,8 @@ struct window::impl
     VkInstance
     vulkan_instance() const
     {
-        using type = std::reference_wrapper<vk::raii::Instance const>;
-        return *std::any_cast<type>(ctx->inner_vulkan_instance()).get();
+        assert(ctx->inited_subsystems() & ctx::subsystem::video);
+        return **ctx->inner_vulkan_instance();
     }
 };
 
@@ -79,12 +79,6 @@ swap(window& l, window& r) noexcept
     swap(l.pimpl, r.pimpl);
 }
 
-std::any
-window::inner() noexcept
-{
-    return pimpl->window;
-}
-
 window::flag
 operator|(window::flag const l, window::flag const r)
 {
@@ -119,7 +113,7 @@ window::set(flag const flags) noexcept
     return err;
 }
 
-std::any
+VkSurfaceKHR
 window::inner_vulkan_surface() const
 {
     return pimpl->surface;

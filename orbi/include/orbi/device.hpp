@@ -3,7 +3,8 @@
 #include <orbi/detail/util.hpp>
 #include <orbi/pimpl.hpp>
 
-#include <any>
+#include <vulkan/vulkan_raii.hpp>
+
 #include <cstdint>
 
 namespace orbi
@@ -25,11 +26,8 @@ struct device : detail::noncopyable
     friend void swap(device&, device&) noexcept;
 
     // TODO remove; created only to postpone design of api
-    // @return `vk::raii::PhysicalDevice`
-    std::any inner_vulkan_physical_device() const;
-
-    // @return `std::reference_wrapper<vk::raii::Device const>`
-    std::any inner_vulkan_device() const;
+    vk::raii::PhysicalDevice const& inner_vulkan_physical_device() const;
+    vk::raii::Device const& inner_vulkan_device() const;
 
     enum class queue_family
     {

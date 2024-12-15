@@ -104,6 +104,18 @@ operator&(ctx::subsystem l, ctx::subsystem r)
     return static_cast<ctx::subsystem>(detail::to_underlying(l) & detail::to_underlying(r));
 }
 
+ctx::subsystem
+operator|=(ctx::subsystem& l, ctx::subsystem r)
+{
+    return l = l | r;
+}
+
+ctx::subsystem
+operator&=(ctx::subsystem& l, ctx::subsystem r)
+{
+    return l = l & r;
+}
+
 ctx::ctx(subsystem const flags, app_info const& app_info)
 {
     SDL_InitFlags inner_flags{};
@@ -161,34 +173,27 @@ swap(ctx& l, ctx& r) noexcept
     swap(l.need_release_resource, r.need_release_resource);
 }
 
-std::any
-ctx::inner_vulkan_context() noexcept
+ctx::subsystem
+ctx::inited_subsystems() const
 {
-    std::any res;
+    SDL_InitFlags const sdl_flags{ SDL_WasInit(0) };
+    ctx::subsystem inited{};
 
-    if (pimpl->video.has_value())
-    {
-        res = std::ref(pimpl->video->vulkan_context);
-    }
+    if (sdl_flags & SDL_INIT_VIDEO) inited |= subsystem::video;
+    if (sdl_flags & SDL_INIT_EVENTS) inited |= subsystem::event;
 
-    return res;
+    return inited;
 }
 
-std::any
+vk::raii::Instance const*
 ctx::inner_vulkan_instance() const noexcept
 {
-    std::any res;
-
-    if (pimpl->video.has_value())
-    {
-        res = std::ref(pimpl->video->vulkan_instance);
-    }
-
-    return res;
+    return pimpl->video.has_value() ? &pimpl->video->vulkan_instance : nullptr;
 }
 
 namespace
 {
+
 VKAPI_ATTR VkBool32 VKAPI_CALL
 vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type,
                   VkDebugUtilsMessengerCallbackDataEXT const* data, void* /*user_data*/)
@@ -252,6 +257,7 @@ vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsM
     return false;
     // NOLINTEND(cppcoreguidelines-pro-bounds-pointer-arithmetic)
 }
+
 } // namespace
 
 } // namespace orbi

@@ -21,9 +21,9 @@ struct device::impl
 
 device::device(ctx const& ctx, window const& win)
 {
-    auto const& vulkan_instance{
-        std::any_cast<std::reference_wrapper<vk::raii::Instance const>>(ctx.inner_vulkan_instance()).get()
-    };
+    assert(ctx.inited_subsystems() & ctx::subsystem::video);
+    auto const& vulkan_instance{ *ctx.inner_vulkan_instance() };
+
     pimpl->physical_device = vulkan_instance.enumeratePhysicalDevices().at(0);
 
     pimpl->graphics_queue_family_index = [&]()
@@ -40,7 +40,7 @@ device::device(ctx const& ctx, window const& win)
         return it - begin(queue_families);
     }();
 
-    auto const surface{ std::any_cast<VkSurfaceKHR>(win.inner_vulkan_surface()) };
+    auto const surface{ win.inner_vulkan_surface() };
 
     pimpl->present_queue_family_index = [&]()
     {
@@ -117,16 +117,16 @@ swap(device& l, device& r) noexcept
     swap(*l.pimpl, *r.pimpl);
 }
 
-std::any
+vk::raii::PhysicalDevice const&
 device::inner_vulkan_physical_device() const
 {
     return pimpl->physical_device;
 }
 
-std::any
+vk::raii::Device const&
 device::inner_vulkan_device() const
 {
-    return std::ref(pimpl->device);
+    return pimpl->device;
 }
 
 device::queue_family_index_type

@@ -5,7 +5,8 @@
 #include <orbi/pimpl.hpp>
 #include <orbi/version.hpp>
 
-#include <any>
+#include <vulkan/vulkan_raii.hpp>
+
 #include <cstdint>
 
 namespace orbi
@@ -32,6 +33,8 @@ public:
     };
     friend subsystem operator|(subsystem, subsystem);
     friend subsystem operator&(subsystem, subsystem);
+    friend subsystem operator|=(subsystem&, subsystem);
+    friend subsystem operator&=(subsystem&, subsystem);
 
     /*
         init inner backend and required subsystems.
@@ -51,19 +54,15 @@ public:
 
     friend void swap(ctx&, ctx&) noexcept;
 
+    subsystem inited_subsystems() const;
+
     // TODO remove; created only to postpone design of api
+    // where is `std::optinal<T&>???`
     /*
-        @return `std::reference_wrapper<vk::raii::Context>`
-                if `ctx` was initialized with `subsystem::video`
-                Else `ret.has_value() == false`, where `ret` is returned object
+        @return if `bool(subsystem::video & inited_subsystems())` `vk::raii::Instance`
+                else                                              `nullptr`
     */
-    std::any inner_vulkan_context() noexcept;
-    /*
-        @return `std::reference_wrapper<vk::raii::Instance const>`
-                if `ctx` was initialized with `subsystem::video`.
-                Else `ret.has_value() == false`, where `ret` is returned object
-    */
-    std::any inner_vulkan_instance() const noexcept;
+    vk::raii::Instance const* inner_vulkan_instance() const noexcept;
 
 private:
     bool need_release_resource{ true };

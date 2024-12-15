@@ -4,7 +4,7 @@
 #include <orbi/exception.hpp>
 #include <orbi/pimpl.hpp>
 
-#include <any>
+#include <SDL3/SDL_vulkan.h>
 
 namespace orbi
 {
@@ -35,9 +35,6 @@ public:
 
     friend void swap(window&, window&) noexcept;
 
-    // TODO remove; created only to postpone design of api for creating surface
-    std::any inner() noexcept;
-
     // TODO bitmasks already used in several classes,
     //      probably creating class `bitmask` make sense
     enum class flag
@@ -59,10 +56,7 @@ public:
     set_error set(flag) noexcept;
 
     // TODO remove; created only to postpone design of api
-    /*
-        @return `VkSurface`
-    */
-    std::any inner_vulkan_surface() const;
+    VkSurfaceKHR inner_vulkan_surface() const;
 
 private:
     struct impl;
