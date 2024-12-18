@@ -87,6 +87,10 @@ try : vulkan_instance{ nullptr }, debug_utils_messenger{ nullptr }
         }()
     };
 }
+catch (ctx::error const&)
+{
+    throw;
+}
 catch (...)
 {
     std::throw_with_nested(error{ "ctx::ctx: Internal call to vulkan failed" });
