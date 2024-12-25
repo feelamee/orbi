@@ -72,20 +72,18 @@ try : vulkan_instance{ nullptr }, debug_utils_messenger{ nullptr }
 
     vulkan_instance = vk::raii::Instance{ vulkan_context, instance_create_info };
 
-    debug_utils_messenger = {
-        [&]() -> vk::raii::DebugUtilsMessengerEXT
-        {
-            auto const severity_flags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
-                                      vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
+    debug_utils_messenger = [&]() -> vk::raii::DebugUtilsMessengerEXT
+    {
+        auto const severity_flags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
+                                  vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
 
-            auto const type_flags(vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
-                                  vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
-                                  vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
+        auto const type_flags(vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral |
+                              vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
+                              vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
 
-            return { vulkan_instance,
-                     { .messageSeverity = severity_flags, .messageType = type_flags, .pfnUserCallback = &vk_debug_callback } };
-        }()
-    };
+        return { vulkan_instance,
+                 { .messageSeverity = severity_flags, .messageType = type_flags, .pfnUserCallback = &vk_debug_callback } };
+    }();
 }
 catch (ctx::error const&)
 {

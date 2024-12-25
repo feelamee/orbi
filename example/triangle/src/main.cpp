@@ -72,93 +72,85 @@ try
     auto const& vulkan_physical_device{ device.inner_vulkan_physical_device() };
     auto const graphics_queue_family_index{ device.inner_vulkan_queue_family_index(device::queue_family::graphics) };
     auto const present_queue_family_index{ device.inner_vulkan_queue_family_index(device::queue_family::present) };
-    std::vector const unique_queue_families{ [&]
-                                             {
-                                                 std::vector families{ graphics_queue_family_index,
-                                                                       present_queue_family_index };
-                                                 std::ranges::sort(families);
-                                                 auto const [first, last] = std::ranges::unique(families);
-                                                 families.erase(first, last);
+    std::vector const unique_queue_families = [&]
+    {
+        std::vector families{ graphics_queue_family_index, present_queue_family_index };
+        std::ranges::sort(families);
+        auto const [first, last] = std::ranges::unique(families);
+        families.erase(first, last);
 
-                                                 return families;
-                                             }() };
+        return families;
+    }();
 
     vk::raii::Queue const graphics_queue{ vulkan_device.getQueue(graphics_queue_family_index, 0) };
     vk::raii::Queue const present_queue{ vulkan_device.getQueue(present_queue_family_index, 0) };
 
-    auto const surface_format{
-        [&]
-        {
-            std::vector const formats{ vulkan_physical_device.getSurfaceFormatsKHR(surface) };
+    auto const surface_format = [&]
+    {
+        std::vector const formats{ vulkan_physical_device.getSurfaceFormatsKHR(surface) };
 
-            auto const fmt{ std::ranges::find(formats, vk::SurfaceFormatKHR{ vk::Format::eB8G8R8A8Srgb,
-                                                                             vk::ColorSpaceKHR::eSrgbNonlinear }) };
+        auto const fmt{ std::ranges::find(formats, vk::SurfaceFormatKHR{ vk::Format::eB8G8R8A8Srgb,
+                                                                         vk::ColorSpaceKHR::eSrgbNonlinear }) };
 
-            assert(fmt != end(formats));
-            return *fmt;
-        }()
-    };
+        assert(fmt != end(formats));
+        return *fmt;
+    }();
 
-    auto const surface_present_mode{
-        [&]
-        {
-            std::vector const modes{ vulkan_physical_device.getSurfacePresentModesKHR(surface) };
-            auto const mode{ std::ranges::find(modes, vk::PresentModeKHR::eFifo) };
+    auto const surface_present_mode = [&]
+    {
+        std::vector const modes{ vulkan_physical_device.getSurfacePresentModesKHR(surface) };
+        auto const mode{ std::ranges::find(modes, vk::PresentModeKHR::eFifo) };
 
-            assert(mode != end(modes));
-            return *mode;
-        }()
-    };
+        assert(mode != end(modes));
+        return *mode;
+    }();
 
     auto const surface_capabilities{ vulkan_physical_device.getSurfaceCapabilitiesKHR(surface) };
     vk::Extent2D const default_extent{ 500, 500 };
 
-    auto const make_extent{ [&]() -> vk::Extent2D
-                            {
-                                vk::Extent2D extent =
-                                    vulkan_physical_device.getSurfaceCapabilitiesKHR(surface).currentExtent;
-                                bool const is_extent_should_be_determined_by_swapchain =
-                                    extent == vk::Extent2D{ 0xFFFFFFFF, 0xFFFFFFFF };
+    auto const make_extent = [&]() -> vk::Extent2D
+    {
+        vk::Extent2D extent = vulkan_physical_device.getSurfaceCapabilitiesKHR(surface).currentExtent;
+        bool const is_extent_should_be_determined_by_swapchain =
+            extent == vk::Extent2D{ 0xFFFFFFFF, 0xFFFFFFFF };
 
-                                if (is_extent_should_be_determined_by_swapchain)
-                                {
-                                    extent = default_extent;
-                                } else
-                                {
-                                    assert(extent.height >= surface_capabilities.minImageExtent.height);
-                                    assert(extent.height <= surface_capabilities.maxImageExtent.height);
-                                    assert(extent.width >= surface_capabilities.minImageExtent.width);
-                                    assert(extent.width <= surface_capabilities.maxImageExtent.width);
-                                }
+        if (is_extent_should_be_determined_by_swapchain)
+        {
+            extent = default_extent;
+        } else
+        {
+            assert(extent.height >= surface_capabilities.minImageExtent.height);
+            assert(extent.height <= surface_capabilities.maxImageExtent.height);
+            assert(extent.width >= surface_capabilities.minImageExtent.width);
+            assert(extent.width <= surface_capabilities.maxImageExtent.width);
+        }
 
-                                return extent;
-                            } };
+        return extent;
+    };
 
     vk::Extent2D extent{ make_extent() };
 
-    auto const make_swapchain{
-        [&]() -> vk::raii::SwapchainKHR
-        {
-            return { vulkan_device,
-                     { .surface = surface,
-                       .minImageCount = std::clamp(3u, surface_capabilities.minImageCount,
-                                                   surface_capabilities.maxImageCount == 0
-                                                       ? std::numeric_limits<std::uint32_t>::max()
-                                                       : surface_capabilities.maxImageCount),
-                       .imageFormat = surface_format.format,
-                       .imageColorSpace = surface_format.colorSpace,
-                       .imageExtent = extent,
-                       .imageArrayLayers = 1,
-                       .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
-                       .imageSharingMode = unique_queue_families.size() == 1 ? vk::SharingMode::eExclusive
-                                                                             : vk::SharingMode::eConcurrent,
-                       .queueFamilyIndexCount = static_cast<std::uint32_t>(unique_queue_families.size()),
-                       .pQueueFamilyIndices = unique_queue_families.data(),
-                       .preTransform = surface_capabilities.currentTransform,
-                       .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
-                       .presentMode = surface_present_mode,
-                       .clipped = vk::True } };
-        }
+    auto const make_swapchain = [&]() -> vk::raii::SwapchainKHR
+    {
+        return { vulkan_device,
+                 { .surface = surface,
+                   .minImageCount = std::clamp(3u, surface_capabilities.minImageCount,
+                                               surface_capabilities.maxImageCount == 0
+                                                   ? std::numeric_limits<std::uint32_t>::max()
+                                                   : surface_capabilities.maxImageCount),
+                   .imageFormat = surface_format.format,
+                   .imageColorSpace = surface_format.colorSpace,
+                   .imageExtent = extent,
+                   .imageArrayLayers = 1,
+                   .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+                   .imageSharingMode = unique_queue_families.size() == 1 ? vk::SharingMode::eExclusive
+                                                                         : vk::SharingMode::eConcurrent,
+                   .queueFamilyIndexCount = static_cast<std::uint32_t>(unique_queue_families.size()),
+                   .pQueueFamilyIndices = unique_queue_families.data(),
+                   .preTransform = surface_capabilities.currentTransform,
+                   .compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque,
+                   .presentMode = surface_present_mode,
+                   .clipped = vk::True } };
     };
     vk::raii::SwapchainKHR swapchain{ make_swapchain() };
 
@@ -275,49 +267,43 @@ try
                                            .renderPass = *render_pass,
                                            .subpass = 0 } };
 
-    auto const make_image_views{
-        [&]
-        {
-            auto const rng =
-                swapchain.getImages() |
-                std::views::transform(
-                    [&](auto const& image) -> vk::raii::ImageView
-                    {
-                        return { vulkan_device,
-                                 { .image = image,
-                                   .viewType = vk::ImageViewType::e2D,
-                                   .format = surface_format.format,
-                                   .subresourceRange = { .aspectMask = vk::ImageAspectFlagBits::eColor,
-                                                         .baseMipLevel = 0,
-                                                         .levelCount = 1,
-                                                         .baseArrayLayer = 0,
-                                                         .layerCount = 1 } } };
-                    });
+    auto const make_image_views = [&]
+    {
+        auto const rng = swapchain.getImages() |
+                         std::views::transform(
+                             [&](auto const& image) -> vk::raii::ImageView
+                             {
+                                 return { vulkan_device,
+                                          { .image = image,
+                                            .viewType = vk::ImageViewType::e2D,
+                                            .format = surface_format.format,
+                                            .subresourceRange = { .aspectMask = vk::ImageAspectFlagBits::eColor,
+                                                                  .baseMipLevel = 0,
+                                                                  .levelCount = 1,
+                                                                  .baseArrayLayer = 0,
+                                                                  .layerCount = 1 } } };
+                             });
 
-            return std::vector(begin(rng), end(rng));
-        }
+        return std::vector(begin(rng), end(rng));
     };
 
     std::vector image_views{ make_image_views() };
 
-    auto const make_frame_buffers{
-        [&]
-        {
-            auto const rng{ image_views | std::views::transform(
-                                              [&](auto const& view) -> vk::raii::Framebuffer
-                                              {
-                                                  return { vulkan_device, vk::FramebufferCreateInfo{
-                                                                              .renderPass = render_pass,
-                                                                              .attachmentCount = 1,
-                                                                              .pAttachments = &*view,
-                                                                              .width = extent.width,
-                                                                              .height = extent.height,
-                                                                              .layers = 1 } };
-                                              }) };
+    auto const make_frame_buffers = [&]
+    {
+        auto const rng{ image_views | std::views::transform(
+                                          [&](auto const& view) -> vk::raii::Framebuffer
+                                          {
+                                              return { vulkan_device, vk::FramebufferCreateInfo{
+                                                                          .renderPass = render_pass,
+                                                                          .attachmentCount = 1,
+                                                                          .pAttachments = &*view,
+                                                                          .width = extent.width,
+                                                                          .height = extent.height,
+                                                                          .layers = 1 } };
+                                          }) };
 
-            return std::vector(begin(rng), end(rng));
-        }
-
+        return std::vector(begin(rng), end(rng));
     };
 
     std::vector frame_buffers{ make_frame_buffers() };

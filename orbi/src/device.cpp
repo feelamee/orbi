@@ -55,16 +55,15 @@ device::device(ctx const& ctx, window const& win)
         return it - begin(queue_families);
     }();
 
-    std::vector const unique_queue_families{ [&]
-                                             {
-                                                 std::vector families{ pimpl->graphics_queue_family_index,
-                                                                       pimpl->present_queue_family_index };
-                                                 std::ranges::sort(families);
-                                                 auto const [first, last] = std::ranges::unique(families);
-                                                 families.erase(first, last);
+    std::vector const unique_queue_families = [&]
+    {
+        std::vector families{ pimpl->graphics_queue_family_index, pimpl->present_queue_family_index };
+        std::ranges::sort(families);
+        auto const [first, last] = std::ranges::unique(families);
+        families.erase(first, last);
 
-                                                 return families;
-                                             }() };
+        return families;
+    }();
 
     pimpl->device = [&]() -> vk::raii::Device
     {
