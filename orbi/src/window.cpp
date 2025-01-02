@@ -16,14 +16,14 @@ namespace orbi
 struct window::impl
 {
     SDL_Window* window{ nullptr };
-    ctx const* ctx{ nullptr };
+    ctx const* context{ nullptr };
     VkSurfaceKHR surface{};
 
     VkInstance
     vulkan_instance() const
     {
-        assert(ctx->inited_subsystems() & ctx::subsystem::video);
-        return **ctx->inner_vulkan_instance();
+        assert(context->inited_subsystems() & ctx::subsystem::video);
+        return **context->inner_vulkan_instance();
     }
 };
 
@@ -35,7 +35,7 @@ window::window(ctx const& ctx)
         throw error{ "SDL_CreateWindow failed with: '{}'", SDL_GetError() };
     }
 
-    data->ctx = &ctx;
+    data->context = &ctx;
 
     if (!SDL_Vulkan_CreateSurface(data->window, data->vulkan_instance(), nullptr, &data->surface))
     {
