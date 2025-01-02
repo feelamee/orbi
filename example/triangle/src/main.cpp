@@ -44,9 +44,9 @@ handle_nested_exceptions(std::exception const& e, int level = 0)
     {
         std::rethrow_if_nested(e);
     }
-    catch (std::exception const& e)
+    catch (std::exception const& nested)
     {
-        handle_nested_exceptions(e, level + 1);
+        handle_nested_exceptions(nested, level + 1);
     }
 }
 
