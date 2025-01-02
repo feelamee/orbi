@@ -137,7 +137,7 @@ ctx::ctx(subsystem const flags, app_info const& app_info)
             throw error{ "SDL_Vulkan_LoadLibrary failed with: '{}'", SDL_GetError() };
         }
 
-        pimpl->video.emplace(app_info);
+        data->video.emplace(app_info);
     }
 }
 
@@ -148,7 +148,7 @@ ctx::~ctx()
         SDL_Quit();
     }
 
-    if (pimpl->video.has_value())
+    if (data->video.has_value())
     {
         SDL_Vulkan_UnloadLibrary();
     }
@@ -190,7 +190,7 @@ ctx::inited_subsystems() const
 vk::raii::Instance const*
 ctx::inner_vulkan_instance() const noexcept
 {
-    return pimpl->video.has_value() ? &pimpl->video->vulkan_instance : nullptr;
+    return data->video.has_value() ? &data->video->vulkan_instance : nullptr;
 }
 
 namespace

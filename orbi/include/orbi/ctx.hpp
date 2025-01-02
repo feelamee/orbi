@@ -68,7 +68,7 @@ private:
     bool need_release_resource{ true };
 
     struct impl;
-    pimpl<impl, 80, 8> pimpl;
+    pimpl<impl, 80, 8> data;
 };
 
 } // namespace orbi
