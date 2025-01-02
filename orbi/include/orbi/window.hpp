@@ -61,7 +61,7 @@ public:
 private:
     struct impl;
 
-    pimpl<impl, 24, 8> pimpl;
+    pimpl<impl, 24, 8> data;
 };
 
 } // namespace orbi

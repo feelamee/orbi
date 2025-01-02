@@ -29,15 +29,15 @@ struct window::impl
 
 window::window(ctx const& ctx)
 {
-    pimpl->window = SDL_CreateWindow("default window name", 500, 500, SDL_WINDOW_VULKAN);
-    if (!pimpl->window)
+    data->window = SDL_CreateWindow("default window name", 500, 500, SDL_WINDOW_VULKAN);
+    if (!data->window)
     {
         throw error{ "SDL_CreateWindow failed with: '{}'", SDL_GetError() };
     }
 
-    pimpl->ctx = &ctx;
+    data->ctx = &ctx;
 
-    if (!SDL_Vulkan_CreateSurface(pimpl->window, pimpl->vulkan_instance(), nullptr, &pimpl->surface))
+    if (!SDL_Vulkan_CreateSurface(data->window, data->vulkan_instance(), nullptr, &data->surface))
     {
         throw error{ "SDL_Vulkan_CreateSurface failed with: '{}'", SDL_GetError() };
     }
@@ -47,20 +47,20 @@ window::~window()
 {
     // TODO: think about store ref instead of pointer to say more consistently
     //       that it can't be `nullptr`
-    if (pimpl->window)
+    if (data->window)
     {
-        SDL_DestroyWindow(pimpl->window);
+        SDL_DestroyWindow(data->window);
     }
 
-    if (pimpl->surface)
+    if (data->surface)
     {
-        SDL_Vulkan_DestroySurface(pimpl->vulkan_instance(), pimpl->surface, nullptr);
+        SDL_Vulkan_DestroySurface(data->vulkan_instance(), data->surface, nullptr);
     }
 }
 
 window::window(window&& other)
 {
-    pimpl->window = std::exchange(other.pimpl->window, nullptr);
+    data->window = std::exchange(other.data->window, nullptr);
 }
 
 window&
@@ -76,7 +76,7 @@ swap(window& l, window& r) noexcept
 {
     using std::swap;
 
-    swap(l.pimpl, r.pimpl);
+    swap(l.data, r.data);
 }
 
 window::flag
@@ -104,7 +104,7 @@ window::set(flag const flags) noexcept
 
     if (bool(flags & flag::resizable))
     {
-        if (!SDL_SetWindowResizable(pimpl->window, true))
+        if (!SDL_SetWindowResizable(data->window, true))
         {
             err |= set_error::resizable;
         }
@@ -116,7 +116,7 @@ window::set(flag const flags) noexcept
 VkSurfaceKHR
 window::inner_vulkan_surface() const
 {
-    return pimpl->surface;
+    return data->surface;
 }
 
 } // namespace orbi
