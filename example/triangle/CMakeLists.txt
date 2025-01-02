@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(triangle)
+project(example-triangle)
 
 add_executable(triangle "src/main.cpp")
 target_compile_features(triangle PRIVATE cxx_std_20)
