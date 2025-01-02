@@ -41,7 +41,7 @@ struct device : detail::noncopyable
 private:
     struct impl;
 
-    pimpl<impl, 48, 8> pimpl;
+    pimpl<impl, 48, 8> data;
 };
 
 } // namespace orbi

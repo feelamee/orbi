@@ -24,11 +24,11 @@ device::device(ctx const& ctx, window const& win)
     assert(ctx.inited_subsystems() & ctx::subsystem::video);
     auto const& vulkan_instance{ *ctx.inner_vulkan_instance() };
 
-    pimpl->physical_device = vulkan_instance.enumeratePhysicalDevices().at(0);
+    data->physical_device = vulkan_instance.enumeratePhysicalDevices().at(0);
 
-    pimpl->graphics_queue_family_index = [&]()
+    data->graphics_queue_family_index = [&]()
     {
-        auto const queue_families{ pimpl->physical_device.getQueueFamilyProperties() };
+        auto const queue_families{ data->physical_device.getQueueFamilyProperties() };
         auto const it{ std::ranges::find_if(queue_families,
                                             [](auto const props) {
                                                 return static_cast<bool>(props.queueFlags &
@@ -42,13 +42,13 @@ device::device(ctx const& ctx, window const& win)
 
     auto const surface{ win.inner_vulkan_surface() };
 
-    pimpl->present_queue_family_index = [&]()
+    data->present_queue_family_index = [&]()
     {
-        auto const queue_families{ pimpl->physical_device.getQueueFamilyProperties() };
-        auto const it{ std::ranges::find_if(queue_families,
-                                            [&, i = 0](auto const) mutable {
-                                                return pimpl->physical_device.getSurfaceSupportKHR(i++, surface);
-                                            }) };
+        auto const queue_families{ data->physical_device.getQueueFamilyProperties() };
+        auto const it{
+            std::ranges::find_if(queue_families, [&, i = 0](auto const) mutable
+                                 { return data->physical_device.getSurfaceSupportKHR(i++, surface); })
+        };
 
         assert(it != end(queue_families));
 
@@ -57,7 +57,7 @@ device::device(ctx const& ctx, window const& win)
 
     std::vector const unique_queue_families = [&]
     {
-        std::vector families{ pimpl->graphics_queue_family_index, pimpl->present_queue_family_index };
+        std::vector families{ data->graphics_queue_family_index, data->present_queue_family_index };
         std::ranges::sort(families);
         auto const [first, last] = std::ranges::unique(families);
         families.erase(first, last);
@@ -65,7 +65,7 @@ device::device(ctx const& ctx, window const& win)
         return families;
     }();
 
-    pimpl->device = [&]() -> vk::raii::Device
+    data->device = [&]() -> vk::raii::Device
     {
         float const queue_priority{ 1 };
 
@@ -86,7 +86,7 @@ device::device(ctx const& ctx, window const& win)
 
         };
 
-        return { pimpl->physical_device, device_create_info };
+        return { data->physical_device, device_create_info };
     }();
 }
 
@@ -96,8 +96,8 @@ device::~device()
 
 device::device(device&& other)
 {
-    pimpl->physical_device = std::exchange(other.pimpl->physical_device, nullptr);
-    pimpl->device = std::exchange(other.pimpl->device, nullptr);
+    data->physical_device = std::exchange(other.data->physical_device, nullptr);
+    data->device = std::exchange(other.data->device, nullptr);
 }
 
 device&
@@ -113,19 +113,19 @@ swap(device& l, device& r) noexcept
 {
     using std::swap;
 
-    swap(*l.pimpl, *r.pimpl);
+    swap(*l.data, *r.data);
 }
 
 vk::raii::PhysicalDevice const&
 device::inner_vulkan_physical_device() const
 {
-    return pimpl->physical_device;
+    return data->physical_device;
 }
 
 vk::raii::Device const&
 device::inner_vulkan_device() const
 {
-    return pimpl->device;
+    return data->device;
 }
 
 device::queue_family_index_type
@@ -134,10 +134,10 @@ device::inner_vulkan_queue_family_index(queue_family family) const
     switch (family)
     {
     case queue_family::graphics:
-        return pimpl->graphics_queue_family_index;
+        return data->graphics_queue_family_index;
 
     case queue_family::present:
-        return pimpl->present_queue_family_index;
+        return data->present_queue_family_index;
     }
 
     detail::unreachable();
