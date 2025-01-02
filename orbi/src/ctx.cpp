@@ -39,8 +39,8 @@ try : vulkan_instance{ nullptr }, debug_utils_messenger{ nullptr }
 {
     vk::ApplicationInfo const vulkan_app_info{
         .pApplicationName = app_info.name.c_str(),
-        .applicationVersion = vk::makeApiVersion(std::uint16_t{ 0 }, app_info.version.major,
-                                                 app_info.version.minor, app_info.version.patch),
+        .applicationVersion = vk::makeApiVersion(std::uint16_t{ 0 }, app_info.semver.major,
+                                                 app_info.semver.minor, app_info.semver.patch),
         .pEngineName = "orbi",
         .engineVersion = vk::makeApiVersion(0, 0, 1, 0),
         .apiVersion = VK_API_VERSION_1_3

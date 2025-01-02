@@ -57,7 +57,7 @@ try
     using namespace orbi;
 
     ctx ctx{ ctx::subsystem::video | ctx::subsystem::event,
-             { .name = "probably triangle", .version = version{ 0, 1, 0 } } };
+             { .name = "probably triangle", .semver = version{ 0, 1, 0 } } };
 
     window window{ ctx };
     {
