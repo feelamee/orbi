@@ -176,7 +176,7 @@ swap(ctx& l, ctx& r) noexcept
 }
 
 ctx::subsystem
-ctx::inited_subsystems() const
+ctx::inited_subsystems() const // NOLINT(readability-convert-member-functions-to-static)
 {
     SDL_InitFlags const sdl_flags{ SDL_WasInit(0) };
     ctx::subsystem inited{};

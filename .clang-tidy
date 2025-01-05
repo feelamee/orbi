@@ -70,6 +70,7 @@ Checks: '-*, # disable all to specify needed manually
         ,-cppcoreguidelines-avoid-magic-numbers
         ,-cppcoreguidelines-avoid-do-while
         ,-cppcoreguidelines-pro-type-reinterpret-cast
+        ,-cppcoreguidelines-special-member-functions
         ,clang-analyzer-*
 
         ,misc-const-correctness
