@@ -31,8 +31,6 @@ public:
     window(window&&);
     window& operator=(window);
 
-    window& operator=(window&&) = delete;
-
     friend void swap(window&, window&) noexcept;
 
     // TODO bitmasks already used in several classes,

@@ -21,8 +21,6 @@ struct device : detail::noncopyable
     device(device&&);
     device& operator=(device);
 
-    device& operator=(device&&) = delete;
-
     friend void swap(device&, device&) noexcept;
 
     // TODO remove; created only to postpone design of api

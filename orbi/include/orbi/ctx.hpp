@@ -49,9 +49,6 @@ public:
     ctx(ctx&&);
     ctx& operator=(ctx);
 
-    // TODO what about mixins? like `noncopyable`, `nonmoveable`, etc
-    ctx& operator=(ctx&&) = delete;
-
     friend void swap(ctx&, ctx&) noexcept;
 
     subsystem inited_subsystems() const;
