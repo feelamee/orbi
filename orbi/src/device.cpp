@@ -26,7 +26,7 @@ device::device(ctx const& ctx, window const& win)
 
     data->physical_device = vulkan_instance.enumeratePhysicalDevices().at(0);
 
-    data->graphics_queue_family_index = [&]()
+    data->graphics_queue_family_index = [&]
     {
         auto const queue_families{ data->physical_device.getQueueFamilyProperties() };
         auto const it{ std::ranges::find_if(queue_families,
@@ -42,7 +42,7 @@ device::device(ctx const& ctx, window const& win)
 
     auto const surface{ win.inner_vulkan_surface() };
 
-    data->present_queue_family_index = [&]()
+    data->present_queue_family_index = [&]
     {
         auto const queue_families{ data->physical_device.getQueueFamilyProperties() };
         auto const it{

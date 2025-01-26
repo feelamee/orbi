@@ -105,12 +105,12 @@ try
         return *mode;
     }();
 
-    auto const surface_capabilities{ vulkan_physical_device.getSurfaceCapabilitiesKHR(surface) };
     vk::Extent2D const default_extent{ 500, 500 };
 
     auto const make_extent = [&]() -> vk::Extent2D
     {
-        vk::Extent2D extent = vulkan_physical_device.getSurfaceCapabilitiesKHR(surface).currentExtent;
+        auto const surface_capabilities{ vulkan_physical_device.getSurfaceCapabilitiesKHR(surface) };
+        vk::Extent2D extent = surface_capabilities.currentExtent;
         bool const is_extent_should_be_determined_by_swapchain =
             extent == vk::Extent2D{ 0xFFFFFFFF, 0xFFFFFFFF };
 
@@ -132,19 +132,25 @@ try
 
     auto const make_swapchain = [&]() -> vk::raii::SwapchainKHR
     {
+        auto const surface_capabilities{ vulkan_physical_device.getSurfaceCapabilitiesKHR(surface) };
+        auto const max_image_count = surface_capabilities.maxImageCount == 0
+                                         ? std::numeric_limits<std::uint32_t>::max()
+                                         : surface_capabilities.maxImageCount;
+
+        auto const image_count = std::clamp(3u, surface_capabilities.minImageCount, max_image_count);
+
+        auto const sharing_mode = unique_queue_families.size() == 1 ? vk::SharingMode::eExclusive
+                                                                    : vk::SharingMode::eConcurrent;
+
         return { vulkan_device,
                  { .surface = surface,
-                   .minImageCount = std::clamp(3u, surface_capabilities.minImageCount,
-                                               surface_capabilities.maxImageCount == 0
-                                                   ? std::numeric_limits<std::uint32_t>::max()
-                                                   : surface_capabilities.maxImageCount),
+                   .minImageCount = image_count,
                    .imageFormat = surface_format.format,
                    .imageColorSpace = surface_format.colorSpace,
                    .imageExtent = extent,
                    .imageArrayLayers = 1,
                    .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
-                   .imageSharingMode = unique_queue_families.size() == 1 ? vk::SharingMode::eExclusive
-                                                                         : vk::SharingMode::eConcurrent,
+                   .imageSharingMode = sharing_mode,
                    .queueFamilyIndexCount = static_cast<std::uint32_t>(unique_queue_families.size()),
                    .pQueueFamilyIndices = unique_queue_families.data(),
                    .preTransform = surface_capabilities.currentTransform,
