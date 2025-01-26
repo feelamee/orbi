@@ -18,7 +18,7 @@ struct device : detail::noncopyable
     device(ctx const&, window const&);
     ~device();
 
-    device(device&&);
+    device(device&&) noexcept;
     device& operator=(device);
 
     device& operator=(device&&) = delete;

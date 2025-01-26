@@ -22,8 +22,7 @@ struct window::impl
     VkInstance
     vulkan_instance() const
     {
-        assert(context->inited_subsystems() & ctx::subsystem::video);
-        return **context->inner_vulkan_instance();
+        return *context->inner_vulkan_instance();
     }
 };
 
@@ -58,7 +57,7 @@ window::~window()
     }
 }
 
-window::window(window&& other)
+window::window(window&& other) noexcept
 {
     data->window = std::exchange(other.data->window, nullptr);
 }

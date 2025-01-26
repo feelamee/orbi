@@ -27,8 +27,8 @@ public:
     {
     }
 
-    pimpl(pimpl&& other) noexcept(noexcept(pimpl(*other)))
-        : pimpl(*other)
+    pimpl(pimpl&& other) noexcept(noexcept(pimpl(std::move(*other))))
+        : pimpl(std::move(*other))
     {
     }
 

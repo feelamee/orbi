@@ -21,16 +21,17 @@ struct device::impl
 
 device::device(ctx const& ctx, window const& win)
 {
-    assert(ctx.inited_subsystems() & ctx::subsystem::video);
-    auto const& vulkan_instance{ *ctx.inner_vulkan_instance() };
+    auto const& vulkan_instance{ ctx.inner_vulkan_instance() };
 
-    data->physical_device = vulkan_instance.enumeratePhysicalDevices().at(0);
+    data->physical_device =
+        vk::raii::PhysicalDevice(vulkan_instance, *vulkan_instance.enumeratePhysicalDevices().at(0));
 
     data->graphics_queue_family_index = [&]
     {
         auto const queue_families{ data->physical_device.getQueueFamilyProperties() };
         auto const it{ std::ranges::find_if(queue_families,
-                                            [](auto const props) {
+                                            [](auto const props)
+                                            {
                                                 return static_cast<bool>(props.queueFlags &
                                                                          vk::QueueFlagBits::eGraphics);
                                             }) };
@@ -40,7 +41,7 @@ device::device(ctx const& ctx, window const& win)
         return it - begin(queue_families);
     }();
 
-    auto const surface{ win.inner_vulkan_surface() };
+    auto* const surface{ win.inner_vulkan_surface() };
 
     data->present_queue_family_index = [&]
     {
@@ -94,7 +95,7 @@ device::~device()
 {
 }
 
-device::device(device&& other)
+device::device(device&& other) noexcept
 {
     data->physical_device = std::exchange(other.data->physical_device, nullptr);
     data->device = std::exchange(other.data->device, nullptr);

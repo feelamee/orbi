@@ -14,6 +14,9 @@
 #include <iostream>
 #include <ranges>
 
+namespace
+{
+
 std::vector<std::byte>
 read_file(std::filesystem::path const& filename)
 {
@@ -50,14 +53,15 @@ handle_nested_exceptions(std::exception const& e, int level = 0)
     }
 }
 
+} // namespace
+
 int
 main()
 try
 {
     using namespace orbi;
 
-    ctx ctx{ ctx::subsystem::video | ctx::subsystem::event,
-             { .name = "probably triangle", .semver = version{ 0, 1, 0 } } };
+    ctx ctx{ app_info{ .name = "probably triangle", .semver = version{ 0, 1, 0 } } };
 
     window window{ ctx };
     {
@@ -68,7 +72,7 @@ try
     device device{ ctx, window };
 
     auto const& vulkan_device{ device.inner_vulkan_device() };
-    auto const surface{ window.inner_vulkan_surface() };
+    auto* const surface{ window.inner_vulkan_surface() };
     auto const& vulkan_physical_device{ device.inner_vulkan_physical_device() };
     auto const graphics_queue_family_index{ device.inner_vulkan_queue_family_index(device::queue_family::graphics) };
     auto const present_queue_family_index{ device.inner_vulkan_queue_family_index(device::queue_family::present) };

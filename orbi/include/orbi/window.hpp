@@ -28,7 +28,7 @@ public:
     explicit window(ctx const&);
     ~window();
 
-    window(window&&);
+    window(window&&) noexcept;
     window& operator=(window);
 
     window& operator=(window&&) = delete;
