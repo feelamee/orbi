@@ -1,7 +1,7 @@
 #pragma once
 
+#include <orbi/detail/pimpl.hpp>
 #include <orbi/detail/util.hpp>
-#include <orbi/pimpl.hpp>
 
 #include <vulkan/vulkan_raii.hpp>
 
@@ -41,7 +41,7 @@ struct device : detail::noncopyable
 private:
     struct impl;
 
-    pimpl<impl, 48, 8> data;
+    detail::pimpl<impl, 48, 8> data;
 };
 
 } // namespace orbi

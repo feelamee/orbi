@@ -17,13 +17,13 @@ endif()
 target_sources(
   orbi
   PRIVATE "${include_dir}/orbi/detail/util.hpp"
+          "${include_dir}/orbi/detail/pimpl.hpp"
           "src/util.cpp"
           "${include_dir}/orbi/ctx.hpp"
           "src/ctx.cpp"
           "${include_dir}/orbi/exception.hpp"
           "${include_dir}/orbi/window.hpp"
           "src/window.cpp"
-          "${include_dir}/orbi/pimpl.hpp"
           "${include_dir}/orbi/version.hpp"
           "${include_dir}/orbi/device.hpp"
           "src/device.cpp")

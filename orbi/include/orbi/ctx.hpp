@@ -1,8 +1,8 @@
 #pragma once
 
+#include <orbi/detail/pimpl.hpp>
 #include <orbi/detail/util.hpp>
 #include <orbi/exception.hpp>
-#include <orbi/pimpl.hpp>
 #include <orbi/version.hpp>
 
 #include <vulkan/vulkan_raii.hpp>
@@ -68,7 +68,7 @@ private:
     bool need_release_resource{ true };
 
     struct impl;
-    pimpl<impl, 80, 8> data;
+    detail::pimpl<impl, 80, 8> data;
 };
 
 } // namespace orbi

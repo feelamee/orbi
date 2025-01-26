@@ -1,8 +1,8 @@
 #pragma once
 
+#include <orbi/detail/pimpl.hpp>
 #include <orbi/detail/util.hpp>
 #include <orbi/exception.hpp>
-#include <orbi/pimpl.hpp>
 
 #include <SDL3/SDL_vulkan.h>
 
@@ -61,7 +61,7 @@ public:
 private:
     struct impl;
 
-    pimpl<impl, 24, 8> data;
+    detail::pimpl<impl, 24, 8> data;
 };
 
 } // namespace orbi
