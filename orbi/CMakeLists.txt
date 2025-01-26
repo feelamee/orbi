@@ -65,7 +65,8 @@ target_link_libraries(orbi PUBLIC Vulkan::Headers Vulkan::Vulkan)
 FetchContent_Declare(
   SDL3
   GIT_REPOSITORY "https://github.com/libsdl-org/SDL"
-  GIT_TAG "preview-3.1.6")
+  GIT_TAG "535d80badefc83c5c527ec5748f2a20d6a9310fe" # release-3.2.0
+)
 FetchContent_MakeAvailable(SDL3)
 
 # TODO: use `PRIVATE` after adding all api needed in examples to `orbi`
