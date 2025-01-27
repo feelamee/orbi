@@ -3,12 +3,18 @@
 #include <orbi/detail/pimpl.hpp>
 #include <orbi/detail/util.hpp>
 #include <orbi/exception.hpp>
-#include <orbi/version.hpp>
 
 #include <vulkan/vulkan_raii.hpp>
 
 namespace orbi
 {
+
+struct version
+{
+    std::uint16_t major;
+    std::uint16_t minor;
+    std::uint16_t patch;
+};
 
 struct app_info
 {
@@ -38,14 +44,12 @@ public:
 
     friend void swap(ctx&, ctx&) noexcept;
 
-    // TODO remove; created only to postpone design of api
-    // where is `std::optinal<T&>???`
-    vk::raii::Instance const& inner_vulkan_instance() const noexcept;
+    struct impl;
+    friend impl;
 
 private:
     bool need_release_resource{ true };
 
-    struct impl;
     detail::pimpl<impl, 72, 8> data;
 };
 

@@ -39,7 +39,7 @@ public:
     //      probably creating class `bitmask` make sense
     enum class flag
     {
-        resizable = 0x1,
+        resizable = 0b1,
     };
     friend flag operator|(flag, flag);
     friend flag& operator|=(flag&, flag);
@@ -51,16 +51,12 @@ public:
         use `bool(flag & window::flag::resizable)` to check on fail
         or `!bool(flag)` to check on success
     */
-    using set_error = flag;
+    flag set(flag) noexcept;
 
-    set_error set(flag) noexcept;
-
-    // TODO remove; created only to postpone design of api
-    VkSurfaceKHR inner_vulkan_surface() const;
+    struct impl;
+    friend impl;
 
 private:
-    struct impl;
-
     detail::pimpl<impl, 24, 8> data;
 };
 

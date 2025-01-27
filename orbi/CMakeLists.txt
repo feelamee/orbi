@@ -18,20 +18,23 @@ target_sources(
   orbi
   PRIVATE "${include_dir}/orbi/detail/util.hpp"
           "${include_dir}/orbi/detail/pimpl.hpp"
+          "${include_dir}/orbi/detail/impl.hpp"
           "src/util.cpp"
           "${include_dir}/orbi/ctx.hpp"
           "src/ctx.cpp"
           "${include_dir}/orbi/exception.hpp"
           "${include_dir}/orbi/window.hpp"
           "src/window.cpp"
-          "${include_dir}/orbi/version.hpp"
           "${include_dir}/orbi/device.hpp"
           "src/device.cpp")
 target_compile_features(orbi PUBLIC cxx_std_20)
+target_compile_options(orbi PUBLIC -fmodules-ts)
+
 target_include_directories(orbi PUBLIC "${include_dir}")
 target_link_libraries(orbi PRIVATE $<$<BOOL:${ANDROID}>:anroid log>)
 target_compile_definitions(orbi PUBLIC VULKAN_HPP_NO_CONSTRUCTORS
-                                       VULKAN_HPP_NO_SPACESHIP_OPERATOR)
+                                       VULKAN_HPP_NO_SPACESHIP_OPERATOR
+                                       VULKAN_HPP_NO_STRUCT_SETTERS)
 
 include(pedantic)
 target_link_libraries(orbi
@@ -55,7 +58,7 @@ endif()
 FetchContent_Declare(
   Vulkan-Headers
   GIT_REPOSITORY "https://github.com/KhronosGroup/Vulkan-Headers"
-  GIT_TAG "v1.3.299")
+  GIT_TAG "v1.4.303")
 FetchContent_MakeAvailable(Vulkan-Headers)
 
 # TODO: use `PRIVATE` after adding all api needed in examples to `orbi`

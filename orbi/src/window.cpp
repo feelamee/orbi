@@ -1,4 +1,5 @@
 #include <orbi/ctx.hpp>
+#include <orbi/detail/impl.hpp>
 #include <orbi/detail/util.hpp>
 #include <orbi/device.hpp>
 #include <orbi/window.hpp>
@@ -13,30 +14,17 @@
 namespace orbi
 {
 
-struct window::impl
-{
-    SDL_Window* window{ nullptr };
-    ctx const* context{ nullptr };
-    VkSurfaceKHR surface{};
-
-    VkInstance
-    vulkan_instance() const
-    {
-        return *context->inner_vulkan_instance();
-    }
-};
-
 window::window(ctx const& ctx)
 {
-    data->window = SDL_CreateWindow("default window name", 500, 500, SDL_WINDOW_VULKAN);
-    if (!data->window)
+    data->sdl_window = SDL_CreateWindow("default window name", 500, 500, SDL_WINDOW_VULKAN);
+    if (!data->sdl_window)
     {
         throw error{ "SDL_CreateWindow failed with: '{}'", SDL_GetError() };
     }
 
-    data->context = &ctx;
+    data->context = &ctx::impl::from_ctx(ctx);
 
-    if (!SDL_Vulkan_CreateSurface(data->window, data->vulkan_instance(), nullptr, &data->surface))
+    if (!SDL_Vulkan_CreateSurface(data->sdl_window, *data->context->vulkan_instance, nullptr, &data->vk_surface))
     {
         throw error{ "SDL_Vulkan_CreateSurface failed with: '{}'", SDL_GetError() };
     }
@@ -46,20 +34,20 @@ window::~window()
 {
     // TODO: think about store ref instead of pointer to say more consistently
     //       that it can't be `nullptr`
-    if (data->window)
+    if (data->sdl_window)
     {
-        SDL_DestroyWindow(data->window);
+        SDL_DestroyWindow(data->sdl_window);
     }
 
-    if (data->surface)
+    if (data->vk_surface)
     {
-        SDL_Vulkan_DestroySurface(data->vulkan_instance(), data->surface, nullptr);
+        SDL_Vulkan_DestroySurface(*data->context->vulkan_instance, data->vk_surface, nullptr);
     }
 }
 
 window::window(window&& other) noexcept
 {
-    data->window = std::exchange(other.data->window, nullptr);
+    data->sdl_window = std::exchange(other.data->sdl_window, nullptr);
 }
 
 window&
@@ -96,26 +84,20 @@ operator&(window::flag l, window::flag r)
     return static_cast<window::flag>(detail::to_underlying(l) & detail::to_underlying(r));
 }
 
-window::set_error
+window::flag
 window::set(flag const flags) noexcept
 {
-    set_error err{};
+    flag err{};
 
     if (bool(flags & flag::resizable))
     {
-        if (!SDL_SetWindowResizable(data->window, true))
+        if (!SDL_SetWindowResizable(data->sdl_window, true))
         {
-            err |= set_error::resizable;
+            err |= flag::resizable;
         }
     }
 
     return err;
-}
-
-VkSurfaceKHR
-window::inner_vulkan_surface() const
-{
-    return data->surface;
 }
 
 } // namespace orbi

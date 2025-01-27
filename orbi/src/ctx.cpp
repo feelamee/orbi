@@ -1,4 +1,5 @@
 #include <orbi/ctx.hpp>
+#include <orbi/detail/impl.hpp>
 #include <orbi/detail/util.hpp>
 
 #include <SDL3/SDL_init.h>
@@ -15,16 +16,11 @@ namespace orbi
 
 namespace
 {
-VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT, VkDebugUtilsMessageTypeFlagsEXT,
-                                                 VkDebugUtilsMessengerCallbackDataEXT const*, void*);
-}
 
-struct ctx::impl
-{
-    vk::raii::Context vulkan_context;
-    vk::raii::Instance vulkan_instance{ nullptr };
-    vk::raii::DebugUtilsMessengerEXT debug_utils_messenger{ nullptr };
-};
+VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT, unsigned int,
+                                                 VkDebugUtilsMessengerCallbackDataEXT const*, void*);
+
+}
 
 ctx::ctx(app_info const& app_info)
 try
@@ -84,7 +80,9 @@ try
                               vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
 
         return { data->vulkan_instance,
-                 { .messageSeverity = severity_flags, .messageType = type_flags, .pfnUserCallback = &vk_debug_callback } };
+                 vk::DebugUtilsMessengerCreateInfoEXT{ .messageSeverity = severity_flags,
+                                                       .messageType = type_flags,
+                                                       .pfnUserCallback = &vk_debug_callback } };
     }();
 }
 catch (ctx::error const&)
@@ -127,17 +125,11 @@ swap(ctx& l, ctx& r) noexcept
     swap(l.need_release_resource, r.need_release_resource);
 }
 
-vk::raii::Instance const&
-ctx::inner_vulkan_instance() const noexcept
-{
-    return data->vulkan_instance;
-}
-
 namespace
 {
 
 VKAPI_ATTR VkBool32 VKAPI_CALL
-vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type,
+vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, unsigned int type,
                   VkDebugUtilsMessengerCallbackDataEXT const* data, void* /*user_data*/)
 {
     // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)

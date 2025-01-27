@@ -1,4 +1,5 @@
 #include <orbi/ctx.hpp>
+#include <orbi/detail/impl.hpp>
 #include <orbi/device.hpp>
 #include <orbi/window.hpp>
 
@@ -71,11 +72,15 @@ try
 
     device device{ ctx, window };
 
-    auto const& vulkan_device{ device.inner_vulkan_device() };
-    auto* const surface{ window.inner_vulkan_surface() };
-    auto const& vulkan_physical_device{ device.inner_vulkan_physical_device() };
-    auto const graphics_queue_family_index{ device.inner_vulkan_queue_family_index(device::queue_family::graphics) };
-    auto const present_queue_family_index{ device.inner_vulkan_queue_family_index(device::queue_family::present) };
+    auto const& window_impl{ window::impl::from_window(window) };
+    auto const& device_impl{ device::impl::from_device(device) };
+
+    auto const& vk_device{ device_impl.vk_device };
+    auto* const vk_surface{ window_impl.vk_surface };
+    auto const& vk_physical_device{ device_impl.vk_physical_device };
+    auto const graphics_queue_family_index{ device_impl.graphics_queue_family_index };
+    auto const present_queue_family_index{ device_impl.present_queue_family_index };
+
     std::vector const unique_queue_families = [&]
     {
         std::vector families{ graphics_queue_family_index, present_queue_family_index };
@@ -86,12 +91,12 @@ try
         return families;
     }();
 
-    vk::raii::Queue const graphics_queue{ vulkan_device.getQueue(graphics_queue_family_index, 0) };
-    vk::raii::Queue const present_queue{ vulkan_device.getQueue(present_queue_family_index, 0) };
+    vk::raii::Queue const graphics_queue{ vk_device.getQueue(graphics_queue_family_index, 0) };
+    vk::raii::Queue const present_queue{ vk_device.getQueue(present_queue_family_index, 0) };
 
     auto const surface_format = [&]
     {
-        std::vector const formats{ vulkan_physical_device.getSurfaceFormatsKHR(surface) };
+        std::vector const formats{ vk_physical_device.getSurfaceFormatsKHR(vk_surface) };
 
         auto const fmt{ std::ranges::find(formats, vk::SurfaceFormatKHR{ vk::Format::eB8G8R8A8Srgb,
                                                                          vk::ColorSpaceKHR::eSrgbNonlinear }) };
@@ -102,7 +107,7 @@ try
 
     auto const surface_present_mode = [&]
     {
-        std::vector const modes{ vulkan_physical_device.getSurfacePresentModesKHR(surface) };
+        std::vector const modes{ vk_physical_device.getSurfacePresentModesKHR(vk_surface) };
         auto const mode{ std::ranges::find(modes, vk::PresentModeKHR::eFifo) };
 
         assert(mode != end(modes));
@@ -113,12 +118,11 @@ try
 
     auto const make_extent = [&]() -> vk::Extent2D
     {
-        auto const surface_capabilities{ vulkan_physical_device.getSurfaceCapabilitiesKHR(surface) };
+        auto const surface_capabilities{ vk_physical_device.getSurfaceCapabilitiesKHR(vk_surface) };
         vk::Extent2D extent = surface_capabilities.currentExtent;
-        bool const is_extent_should_be_determined_by_swapchain =
-            extent == vk::Extent2D{ 0xFFFFFFFF, 0xFFFFFFFF };
 
-        if (is_extent_should_be_determined_by_swapchain)
+        // if true, extent should be determined by swapchain
+        if (extent == vk::Extent2D{ 0xFFFFFFFF, 0xFFFFFFFF })
         {
             extent = default_extent;
         } else
@@ -136,7 +140,7 @@ try
 
     auto const make_swapchain = [&]() -> vk::raii::SwapchainKHR
     {
-        auto const surface_capabilities{ vulkan_physical_device.getSurfaceCapabilitiesKHR(surface) };
+        auto const surface_capabilities{ vk_physical_device.getSurfaceCapabilitiesKHR(vk_surface) };
         auto const max_image_count = surface_capabilities.maxImageCount == 0
                                          ? std::numeric_limits<std::uint32_t>::max()
                                          : surface_capabilities.maxImageCount;
@@ -146,8 +150,8 @@ try
         auto const sharing_mode = unique_queue_families.size() == 1 ? vk::SharingMode::eExclusive
                                                                     : vk::SharingMode::eConcurrent;
 
-        return { vulkan_device,
-                 { .surface = surface,
+        return { vk_device,
+                 { .surface = vk_surface,
                    .minImageCount = image_count,
                    .imageFormat = surface_format.format,
                    .imageColorSpace = surface_format.colorSpace,
@@ -168,12 +172,12 @@ try
     auto const vertex_shader_bytecode{ read_file(res_dir / "triangle.vert.spv") };
     auto const fragment_shader_bytecode{ read_file(res_dir / "triangle.frag.spv") };
 
-    vk::raii::ShaderModule const vertex_shader{ vulkan_device,
+    vk::raii::ShaderModule const vertex_shader{ vk_device,
                                                 { .codeSize = vertex_shader_bytecode.size(),
                                                   .pCode = reinterpret_cast<std::uint32_t const*>(
                                                       vertex_shader_bytecode.data()) } };
 
-    vk::raii::ShaderModule const fragment_shader{ vulkan_device,
+    vk::raii::ShaderModule const fragment_shader{ vk_device,
                                                   { .codeSize = fragment_shader_bytecode.size(),
                                                     .pCode = reinterpret_cast<std::uint32_t const*>(
                                                         fragment_shader_bytecode.data()) } };
@@ -221,7 +225,7 @@ try
                                                                                .attachmentCount = 1,
                                                                                .pAttachments = &color_blend_attachment_state };
 
-    vk::raii::PipelineLayout const layout{ vulkan_device, vk::PipelineLayoutCreateInfo{} };
+    vk::raii::PipelineLayout const layout{ vk_device, vk::PipelineLayoutCreateInfo{} };
 
     vk::AttachmentDescription const attachment_description{ .format = surface_format.format,
                                                             .samples = vk::SampleCountFlagBits::e1,
@@ -242,13 +246,13 @@ try
                                                     .srcAccessMask = vk::AccessFlagBits::eNone,
                                                     .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite };
 
-    vk::raii::RenderPass const render_pass{ vulkan_device, vk::RenderPassCreateInfo{
-                                                               .attachmentCount = 1,
-                                                               .pAttachments = &attachment_description,
-                                                               .subpassCount = 1,
-                                                               .pSubpasses = &subpass_description,
-                                                               .dependencyCount = 1,
-                                                               .pDependencies = &subpass_dependency } };
+    vk::raii::RenderPass const render_pass{ vk_device, vk::RenderPassCreateInfo{
+                                                           .attachmentCount = 1,
+                                                           .pAttachments = &attachment_description,
+                                                           .subpassCount = 1,
+                                                           .pSubpasses = &subpass_description,
+                                                           .dependencyCount = 1,
+                                                           .pDependencies = &subpass_dependency } };
 
     vk::PipelineMultisampleStateCreateInfo const multisample_state_create_info{
         .rasterizationSamples = vk::SampleCountFlagBits::e1,
@@ -262,7 +266,7 @@ try
                                                                         .pDynamicStates =
                                                                             dynamic_states.data() };
 
-    vk::raii::Pipeline const pipeline{ vulkan_device, nullptr,
+    vk::raii::Pipeline const pipeline{ vk_device, nullptr,
                                        vk::GraphicsPipelineCreateInfo{
                                            .stageCount = shader_stage_create_infos.size(),
                                            .pStages = shader_stage_create_infos.data(),
@@ -283,7 +287,7 @@ try
                          std::views::transform(
                              [&](auto const& image) -> vk::raii::ImageView
                              {
-                                 return { vulkan_device,
+                                 return { vk_device,
                                           { .image = image,
                                             .viewType = vk::ImageViewType::e2D,
                                             .format = surface_format.format,
@@ -301,17 +305,17 @@ try
 
     auto const make_frame_buffers = [&]
     {
-        auto const rng{ image_views | std::views::transform(
-                                          [&](auto const& view) -> vk::raii::Framebuffer
-                                          {
-                                              return { vulkan_device, vk::FramebufferCreateInfo{
-                                                                          .renderPass = render_pass,
-                                                                          .attachmentCount = 1,
-                                                                          .pAttachments = &*view,
-                                                                          .width = extent.width,
-                                                                          .height = extent.height,
-                                                                          .layers = 1 } };
-                                          }) };
+        auto const rng{ image_views |
+                        std::views::transform(
+                            [&](auto const& view) -> vk::raii::Framebuffer
+                            {
+                                return { vk_device, vk::FramebufferCreateInfo{ .renderPass = render_pass,
+                                                                               .attachmentCount = 1,
+                                                                               .pAttachments = &*view,
+                                                                               .width = extent.width,
+                                                                               .height = extent.height,
+                                                                               .layers = 1 } };
+                            }) };
 
         return std::vector(begin(rng), end(rng));
     };
@@ -319,30 +323,30 @@ try
     std::vector frame_buffers{ make_frame_buffers() };
 
     vk::raii::CommandPool const command_pool{
-        vulkan_device, vk::CommandPoolCreateInfo{ .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
-                                                  .queueFamilyIndex = graphics_queue_family_index }
+        vk_device, vk::CommandPoolCreateInfo{ .flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
+                                              .queueFamilyIndex = graphics_queue_family_index }
     };
 
-    std::vector const command_buffers{ vulkan_device.allocateCommandBuffers(
+    std::vector const command_buffers{ vk_device.allocateCommandBuffers(
         vk::CommandBufferAllocateInfo{ .commandPool = command_pool,
                                        .level = vk::CommandBufferLevel::ePrimary,
                                        .commandBufferCount = 1 }) };
     auto const& command_buffer{ command_buffers.at(0) };
 
-    vk::raii::Semaphore image_available_semaphore{ vulkan_device, vk::SemaphoreCreateInfo{} };
-    vk::raii::Semaphore render_finish_semaphore{ vulkan_device, vk::SemaphoreCreateInfo{} };
-    vk::raii::Fence fence{ vulkan_device, vk::FenceCreateInfo{ .flags = vk::FenceCreateFlagBits::eSignaled } };
+    vk::raii::Semaphore image_available_semaphore{ vk_device, vk::SemaphoreCreateInfo{} };
+    vk::raii::Semaphore render_finish_semaphore{ vk_device, vk::SemaphoreCreateInfo{} };
+    vk::raii::Fence fence{ vk_device, vk::FenceCreateInfo{ .flags = vk::FenceCreateFlagBits::eSignaled } };
 
     while (true)
     {
         auto constexpr timeout{ 3'000'000'000 /* std::numeric_limits<std::uint64_t>::max() */ };
 
         {
-            [[maybe_unused]] auto const result{ vulkan_device.waitForFences(*fence, vk::True, timeout) };
+            [[maybe_unused]] auto const result{ vk_device.waitForFences(*fence, vk::True, timeout) };
             assert(vk::Result::eSuccess == result);
         }
 
-        vulkan_device.resetFences(*fence);
+        vk_device.resetFences(*fence);
 
         SDL_Event ev{};
         while (SDL_PollEvent(&ev))
@@ -413,7 +417,7 @@ try
         assert(vk::Result::eSuccess == result2 || vk::Result::eSuboptimalKHR == result2);
     }
 
-    vulkan_device.waitIdle();
+    vk_device.waitIdle();
 
     return EXIT_SUCCESS;
 }
