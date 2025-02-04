@@ -22,7 +22,7 @@ struct app_info
     version semver{ 0, 1, 0 };
 };
 
-struct ctx
+struct context
 {
 public:
     struct error : runtime_error
@@ -33,13 +33,13 @@ public:
     /*
         @throw `ctx::error`
     */
-    ctx(app_info const& = {});
-    ~ctx();
+    context(app_info const& = {});
+    ~context();
 
-    ctx(ctx&&) noexcept;
-    ctx& operator=(ctx);
+    context(context&&) noexcept;
+    context& operator=(context);
 
-    friend void swap(ctx&, ctx&) noexcept;
+    friend void swap(context&, context&) noexcept;
 
     struct impl;
     friend impl;

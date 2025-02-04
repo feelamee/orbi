@@ -1,4 +1,4 @@
-#include <orbi/ctx.hpp>
+#include <orbi/context.hpp>
 #include <orbi/detail/impl.hpp>
 #include <orbi/detail/util.hpp>
 #include <orbi/device.hpp>
@@ -14,7 +14,7 @@
 namespace orbi
 {
 
-window::window(ctx const& ctx)
+window::window(context const& ctx)
 {
     data->sdl_window = SDL_CreateWindow("default window name", 500, 500, SDL_WINDOW_VULKAN);
     if (!data->sdl_window)
@@ -22,9 +22,9 @@ window::window(ctx const& ctx)
         throw error{ "SDL_CreateWindow failed with: '{}'", SDL_GetError() };
     }
 
-    data->context = &ctx::impl::from_ctx(ctx);
+    data->ctx = &context::impl::from_ctx(ctx);
 
-    if (!SDL_Vulkan_CreateSurface(data->sdl_window, *data->context->vulkan_instance, nullptr, &data->vk_surface))
+    if (!SDL_Vulkan_CreateSurface(data->sdl_window, *data->ctx->vulkan_instance, nullptr, &data->vk_surface))
     {
         throw error{ "SDL_Vulkan_CreateSurface failed with: '{}'", SDL_GetError() };
     }
@@ -41,7 +41,7 @@ window::~window()
 
     if (data->vk_surface)
     {
-        SDL_Vulkan_DestroySurface(*data->context->vulkan_instance, data->vk_surface, nullptr);
+        SDL_Vulkan_DestroySurface(*data->ctx->vulkan_instance, data->vk_surface, nullptr);
     }
 }
 

@@ -9,7 +9,7 @@
 namespace orbi
 {
 
-struct ctx;
+struct context;
 
 struct window
 {
@@ -25,7 +25,7 @@ public:
         @pre `ctx` must outlive `*this`
         @throw `window::error`
     */
-    explicit window(ctx const&);
+    explicit window(context const&);
     ~window();
 
     window(window&&) noexcept;

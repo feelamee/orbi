@@ -1,4 +1,4 @@
-#include <orbi/ctx.hpp>
+#include <orbi/context.hpp>
 #include <orbi/detail/impl.hpp>
 #include <orbi/device.hpp>
 #include <orbi/window.hpp>
@@ -62,7 +62,7 @@ try
 {
     using namespace orbi;
 
-    ctx ctx{ app_info{ .name = "probably triangle", .semver = version{ 0, 1, 0 } } };
+    context ctx{ app_info{ .name = "probably triangle", .semver = version{ 0, 1, 0 } } };
 
     window window{ ctx };
     {

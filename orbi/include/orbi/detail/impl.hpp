@@ -1,22 +1,22 @@
 #pragma once
 
-#include <orbi/ctx.hpp>
+#include <orbi/context.hpp>
 #include <orbi/device.hpp>
 #include <orbi/window.hpp>
 
 namespace orbi
 {
 
-struct ctx::impl
+struct context::impl
 {
-    static ctx::impl&
-    from_ctx(ctx& c)
+    static context::impl&
+    from_ctx(context& c)
     {
         return *c.data;
     }
 
-    static ctx::impl const&
-    from_ctx(ctx const& c)
+    static context::impl const&
+    from_ctx(context const& c)
     {
         return *c.data;
     }
@@ -41,7 +41,7 @@ struct window::impl
     }
 
     SDL_Window* sdl_window{ nullptr };
-    ctx::impl const* context{ nullptr };
+    context::impl const* ctx{ nullptr };
     VkSurfaceKHR vk_surface{};
 };
 

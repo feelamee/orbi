@@ -1,4 +1,4 @@
-#include <orbi/ctx.hpp>
+#include <orbi/context.hpp>
 #include <orbi/detail/impl.hpp>
 #include <orbi/detail/util.hpp>
 
@@ -22,7 +22,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(VkDebugUtilsMessageSeverityFlag
 
 }
 
-ctx::ctx(app_info const& app_info)
+context::context(app_info const& app_info)
 try
 {
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
@@ -85,7 +85,7 @@ try
                                                        .pfnUserCallback = &vk_debug_callback } };
     }();
 }
-catch (ctx::error const&)
+catch (context::error const&)
 {
     throw;
 }
@@ -94,7 +94,7 @@ catch (...)
     std::throw_with_nested(error{ "ctx::ctx: Internal call to vulkan failed" });
 }
 
-ctx::~ctx()
+context::~context()
 {
     if (need_release_resource)
     {
@@ -103,14 +103,14 @@ ctx::~ctx()
     }
 }
 
-ctx::ctx(ctx&& other) noexcept
+context::context(context&& other) noexcept
     : need_release_resource(std::exchange(other.need_release_resource, false))
     , data(std::move(other.data))
 {
 }
 
-ctx&
-ctx::operator=(ctx other)
+context&
+context::operator=(context other)
 {
     swap(*this, other);
 
@@ -118,7 +118,7 @@ ctx::operator=(ctx other)
 }
 
 void
-swap(ctx& l, ctx& r) noexcept
+swap(context& l, context& r) noexcept
 {
     using std::swap;
 

@@ -1,6 +1,6 @@
 #include <doctest/doctest.h>
 
-#include <orbi/ctx.hpp>
+#include <orbi/context.hpp>
 #include <orbi/window.hpp>
 
 TEST_SUITE("orbi")

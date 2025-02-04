@@ -9,11 +9,11 @@ namespace orbi
 {
 
 struct window;
-struct ctx;
+struct context;
 
 struct device
 {
-    device(ctx const&, window const&);
+    device(context const&, window const&);
     ~device();
 
     device(device&&) noexcept;

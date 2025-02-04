@@ -1,4 +1,4 @@
-#include <orbi/ctx.hpp>
+#include <orbi/context.hpp>
 #include <orbi/detail/impl.hpp>
 #include <orbi/device.hpp>
 #include <orbi/window.hpp>
@@ -10,9 +10,9 @@
 namespace orbi
 {
 
-device::device(ctx const& ctx, window const& win)
+device::device(context const& ctx, window const& win)
 {
-    auto const& ctx_impl{ ctx::impl::from_ctx(ctx) };
+    auto const& ctx_impl{ context::impl::from_ctx(ctx) };
     auto const& win_impl{ window::impl::from_window(win) };
     auto const& vulkan_instance{ ctx_impl.vulkan_instance };
 
