@@ -11,7 +11,7 @@ namespace orbi
 
 struct ctx;
 
-struct window : detail::noncopyable
+struct window
 {
 public:
     // TODO unify error types of whole class to one enum
@@ -30,8 +30,6 @@ public:
 
     window(window&&) noexcept;
     window& operator=(window);
-
-    window& operator=(window&&) = delete;
 
     friend void swap(window&, window&) noexcept;
 

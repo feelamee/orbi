@@ -11,15 +11,13 @@ namespace orbi
 struct window;
 struct ctx;
 
-struct device : detail::noncopyable
+struct device
 {
     device(ctx const&, window const&);
     ~device();
 
     device(device&&) noexcept;
     device& operator=(device);
-
-    device& operator=(device&&) = delete;
 
     friend void swap(device&, device&) noexcept;
 

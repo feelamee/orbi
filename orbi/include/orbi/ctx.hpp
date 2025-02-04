@@ -22,7 +22,7 @@ struct app_info
     version semver{ 0, 1, 0 };
 };
 
-struct ctx : detail::noncopyable
+struct ctx
 {
 public:
     struct error : runtime_error
@@ -38,9 +38,6 @@ public:
 
     ctx(ctx&&) noexcept;
     ctx& operator=(ctx);
-
-    // TODO what about mixins? like `noncopyable`, `nonmoveable`, etc
-    ctx& operator=(ctx&&) = delete;
 
     friend void swap(ctx&, ctx&) noexcept;
 

@@ -28,15 +28,4 @@ to_underlying(Enum e) noexcept
     return static_cast<std::underlying_type_t<Enum>>(e);
 }
 
-struct noncopyable
-{
-    noncopyable(noncopyable const&) = delete;
-    noncopyable& operator=(noncopyable const&) = delete;
-
-    noncopyable() = default;
-    noncopyable(noncopyable&&) = default;
-    noncopyable& operator=(noncopyable&&) = default;
-    ~noncopyable() = default;
-};
-
 } // namespace orbi::detail
