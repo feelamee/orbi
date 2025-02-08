@@ -33,7 +33,7 @@ public:
     /*
         @throw `ctx::error`
     */
-    context(app_info const& = {});
+    explicit context(app_info const& = {});
     ~context();
 
     context(context&&) noexcept;
