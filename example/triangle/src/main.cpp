@@ -417,7 +417,7 @@ try
         assert(vk::Result::eSuccess == result2 || vk::Result::eSuboptimalKHR == result2);
     }
 
-    vk_device.waitIdle();
+    device.wait_until_idle();
 
     return EXIT_SUCCESS;
 }

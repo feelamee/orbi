@@ -21,6 +21,8 @@ struct device
 
     friend void swap(device&, device&) noexcept;
 
+    void wait_until_idle() const;
+
     struct impl;
     friend impl;
 

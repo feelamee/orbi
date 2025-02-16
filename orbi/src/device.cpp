@@ -109,4 +109,10 @@ swap(device& l, device& r) noexcept
     swap(*l.data, *r.data);
 }
 
+void
+device::wait_until_idle() const
+{
+    return data->vk_device.waitIdle();
+}
+
 } // namespace orbi
