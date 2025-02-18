@@ -1,36 +1,30 @@
-#include <orbi/ctx.hpp>
+#include <orbi/context.hpp>
+#include <orbi/detail/impl.hpp>
 #include <orbi/device.hpp>
 #include <orbi/window.hpp>
 
 #include <vulkan/vulkan_raii.hpp>
 
 #include <algorithm>
-#include <cstdint>
 
 namespace orbi
 {
 
-struct device::impl
+device::device(context const& ctx, window const& win)
 {
-    vk::raii::PhysicalDevice physical_device{ nullptr };
-    vk::raii::Device device{ nullptr };
+    auto const& ctx_impl{ context::impl::from_ctx(ctx) };
+    auto const& win_impl{ window::impl::from_window(win) };
+    auto const& vulkan_instance{ ctx_impl.vulkan_instance };
 
-    queue_family_index_type graphics_queue_family_index{ 0 };
-    queue_family_index_type present_queue_family_index{ 0 };
-};
+    data->vk_physical_device =
+        vk::raii::PhysicalDevice(vulkan_instance, *vulkan_instance.enumeratePhysicalDevices().at(0));
 
-device::device(ctx const& ctx, window const& win)
-{
-    assert(ctx.inited_subsystems() & ctx::subsystem::video);
-    auto const& vulkan_instance{ *ctx.inner_vulkan_instance() };
-
-    data->physical_device = vulkan_instance.enumeratePhysicalDevices().at(0);
-
-    data->graphics_queue_family_index = [&]()
+    data->graphics_queue_family_index = [&]
     {
-        auto const queue_families{ data->physical_device.getQueueFamilyProperties() };
+        auto const queue_families{ data->vk_physical_device.getQueueFamilyProperties() };
         auto const it{ std::ranges::find_if(queue_families,
-                                            [](auto const props) {
+                                            [](auto const props)
+                                            {
                                                 return static_cast<bool>(props.queueFlags &
                                                                          vk::QueueFlagBits::eGraphics);
                                             }) };
@@ -40,15 +34,16 @@ device::device(ctx const& ctx, window const& win)
         return it - begin(queue_families);
     }();
 
-    auto const surface{ win.inner_vulkan_surface() };
+    auto* const surface{ win_impl.vk_surface };
 
-    data->present_queue_family_index = [&]()
+    data->present_queue_family_index = [&]
     {
-        auto const queue_families{ data->physical_device.getQueueFamilyProperties() };
-        auto const it{
-            std::ranges::find_if(queue_families, [&, i = 0](auto const) mutable
-                                 { return data->physical_device.getSurfaceSupportKHR(i++, surface); })
-        };
+        auto const queue_families{ data->vk_physical_device.getQueueFamilyProperties() };
+        auto const it{ std::ranges::find_if(queue_families,
+                                            [&, i = 0](auto const) mutable
+                                            {
+                                                return data->vk_physical_device.getSurfaceSupportKHR(i++, surface);
+                                            }) };
 
         assert(it != end(queue_families));
 
@@ -65,7 +60,7 @@ device::device(ctx const& ctx, window const& win)
         return families;
     }();
 
-    data->device = [&]() -> vk::raii::Device
+    data->vk_device = [&]() -> vk::raii::Device
     {
         float const queue_priority{ 1 };
 
@@ -86,18 +81,16 @@ device::device(ctx const& ctx, window const& win)
 
         };
 
-        return { data->physical_device, device_create_info };
+        return { data->vk_physical_device, device_create_info };
     }();
 }
 
-device::~device()
-{
-}
+device::~device() = default;
 
-device::device(device&& other)
+device::device(device&& other) noexcept
 {
-    data->physical_device = std::exchange(other.data->physical_device, nullptr);
-    data->device = std::exchange(other.data->device, nullptr);
+    data->vk_physical_device = std::exchange(other.data->vk_physical_device, nullptr);
+    data->vk_device = std::exchange(other.data->vk_device, nullptr);
 }
 
 device&
@@ -116,31 +109,10 @@ swap(device& l, device& r) noexcept
     swap(*l.data, *r.data);
 }
 
-vk::raii::PhysicalDevice const&
-device::inner_vulkan_physical_device() const
+void
+device::wait_until_idle() const
 {
-    return data->physical_device;
-}
-
-vk::raii::Device const&
-device::inner_vulkan_device() const
-{
-    return data->device;
-}
-
-device::queue_family_index_type
-device::inner_vulkan_queue_family_index(queue_family family) const
-{
-    switch (family)
-    {
-    case queue_family::graphics:
-        return data->graphics_queue_family_index;
-
-    case queue_family::present:
-        return data->present_queue_family_index;
-    }
-
-    detail::unreachable();
+    return data->vk_device.waitIdle();
 }
 
 } // namespace orbi

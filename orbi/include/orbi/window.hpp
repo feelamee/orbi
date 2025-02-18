@@ -1,17 +1,17 @@
 #pragma once
 
+#include <orbi/detail/pimpl.hpp>
 #include <orbi/detail/util.hpp>
 #include <orbi/exception.hpp>
-#include <orbi/pimpl.hpp>
 
 #include <SDL3/SDL_vulkan.h>
 
 namespace orbi
 {
 
-struct ctx;
+struct context;
 
-struct window : detail::noncopyable
+struct window
 {
 public:
     // TODO unify error types of whole class to one enum
@@ -25,10 +25,10 @@ public:
         @pre `ctx` must outlive `*this`
         @throw `window::error`
     */
-    explicit window(ctx const&);
+    explicit window(context const&);
     ~window();
 
-    window(window&&);
+    window(window&&) noexcept;
     window& operator=(window);
 
     friend void swap(window&, window&) noexcept;
@@ -37,7 +37,7 @@ public:
     //      probably creating class `bitmask` make sense
     enum class flag
     {
-        resizable = 0x1,
+        resizable = 0b1,
     };
     friend flag operator|(flag, flag);
     friend flag& operator|=(flag&, flag);
@@ -49,17 +49,13 @@ public:
         use `bool(flag & window::flag::resizable)` to check on fail
         or `!bool(flag)` to check on success
     */
-    using set_error = flag;
+    flag set(flag) noexcept;
 
-    set_error set(flag) noexcept;
-
-    // TODO remove; created only to postpone design of api
-    VkSurfaceKHR inner_vulkan_surface() const;
+    struct impl;
+    friend impl;
 
 private:
-    struct impl;
-
-    pimpl<impl, 24, 8> data;
+    detail::pimpl<impl, 24, 8> data;
 };
 
 } // namespace orbi

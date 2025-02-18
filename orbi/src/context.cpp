@@ -1,4 +1,5 @@
-#include <orbi/ctx.hpp>
+#include <orbi/context.hpp>
+#include <orbi/detail/impl.hpp>
 #include <orbi/detail/util.hpp>
 
 #include <SDL3/SDL_init.h>
@@ -7,7 +8,6 @@
 #include <vulkan/vulkan_raii.hpp>
 
 #include <iostream>
-#include <optional>
 #include <sstream>
 #include <utility>
 
@@ -16,27 +16,25 @@ namespace orbi
 
 namespace
 {
-VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT, VkDebugUtilsMessageTypeFlagsEXT,
+
+VKAPI_ATTR VkBool32 VKAPI_CALL vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT, unsigned int,
                                                  VkDebugUtilsMessengerCallbackDataEXT const*, void*);
+
 }
 
-struct ctx::impl
+context::context(app_info const& app_info)
+try
 {
-    struct video
+    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS))
     {
-        video(app_info const& = {});
+        throw error{ "SDL_Init failed with: '{}'", SDL_GetError() };
+    }
 
-        vk::raii::Context vulkan_context;
-        vk::raii::Instance vulkan_instance;
-        vk::raii::DebugUtilsMessengerEXT debug_utils_messenger;
-    };
+    if (!SDL_Vulkan_LoadLibrary(nullptr))
+    {
+        throw error{ "SDL_Vulkan_LoadLibrary failed with: '{}'", SDL_GetError() };
+    }
 
-    std::optional<video> video;
-};
-
-ctx::impl::video::video(app_info const& app_info)
-try : vulkan_instance{ nullptr }, debug_utils_messenger{ nullptr }
-{
     vk::ApplicationInfo const vulkan_app_info{
         .pApplicationName = app_info.name.c_str(),
         .applicationVersion = vk::makeApiVersion(std::uint16_t{ 0 }, app_info.semver.major,
@@ -70,9 +68,9 @@ try : vulkan_instance{ nullptr }, debug_utils_messenger{ nullptr }
     instance_create_info.ppEnabledLayerNames = layers.data();
 #endif
 
-    vulkan_instance = vk::raii::Instance{ vulkan_context, instance_create_info };
+    data->vulkan_instance = vk::raii::Instance{ data->vulkan_context, instance_create_info };
 
-    debug_utils_messenger = [&]() -> vk::raii::DebugUtilsMessengerEXT
+    data->debug_utils_messenger = [&]() -> vk::raii::DebugUtilsMessengerEXT
     {
         auto const severity_flags(vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning |
                                   vk::DebugUtilsMessageSeverityFlagBitsEXT::eError);
@@ -81,11 +79,13 @@ try : vulkan_instance{ nullptr }, debug_utils_messenger{ nullptr }
                               vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance |
                               vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation);
 
-        return { vulkan_instance,
-                 { .messageSeverity = severity_flags, .messageType = type_flags, .pfnUserCallback = &vk_debug_callback } };
+        return { data->vulkan_instance,
+                 vk::DebugUtilsMessengerCreateInfoEXT{ .messageSeverity = severity_flags,
+                                                       .messageType = type_flags,
+                                                       .pfnUserCallback = &vk_debug_callback } };
     }();
 }
-catch (ctx::error const&)
+catch (context::error const&)
 {
     throw;
 }
@@ -94,73 +94,23 @@ catch (...)
     std::throw_with_nested(error{ "ctx::ctx: Internal call to vulkan failed" });
 }
 
-ctx::subsystem
-operator|(ctx::subsystem l, ctx::subsystem r)
-{
-    return static_cast<ctx::subsystem>(detail::to_underlying(l) | detail::to_underlying(r));
-}
-
-ctx::subsystem
-operator&(ctx::subsystem l, ctx::subsystem r)
-{
-    return static_cast<ctx::subsystem>(detail::to_underlying(l) & detail::to_underlying(r));
-}
-
-ctx::subsystem
-operator|=(ctx::subsystem& l, ctx::subsystem r)
-{
-    return l = l | r;
-}
-
-ctx::subsystem
-operator&=(ctx::subsystem& l, ctx::subsystem r)
-{
-    return l = l & r;
-}
-
-ctx::ctx(subsystem const flags, app_info const& app_info)
-{
-    SDL_InitFlags inner_flags{};
-
-    if (bool(flags & subsystem::video)) inner_flags |= SDL_INIT_VIDEO;
-    if (bool(flags & subsystem::event)) inner_flags |= SDL_INIT_EVENTS;
-
-    if (!SDL_Init(inner_flags))
-    {
-        throw error{ "SDL_Init failed with: '{}'", SDL_GetError() };
-    }
-
-    if (bool(flags & subsystem::video))
-    {
-        if (!SDL_Vulkan_LoadLibrary(nullptr))
-        {
-            throw error{ "SDL_Vulkan_LoadLibrary failed with: '{}'", SDL_GetError() };
-        }
-
-        data->video.emplace(app_info);
-    }
-}
-
-ctx::~ctx()
+context::~context()
 {
     if (need_release_resource)
     {
         SDL_Quit();
-    }
-
-    if (data->video.has_value())
-    {
         SDL_Vulkan_UnloadLibrary();
     }
 }
 
-ctx::ctx(ctx&& other)
+context::context(context&& other) noexcept
     : need_release_resource(std::exchange(other.need_release_resource, false))
+    , data(std::move(other.data))
 {
 }
 
-ctx&
-ctx::operator=(ctx other)
+context&
+context::operator=(context other)
 {
     swap(*this, other);
 
@@ -168,36 +118,18 @@ ctx::operator=(ctx other)
 }
 
 void
-swap(ctx& l, ctx& r) noexcept
+swap(context& l, context& r) noexcept
 {
     using std::swap;
 
     swap(l.need_release_resource, r.need_release_resource);
 }
 
-ctx::subsystem
-ctx::inited_subsystems() const // NOLINT(readability-convert-member-functions-to-static)
-{
-    SDL_InitFlags const sdl_flags{ SDL_WasInit(0) };
-    ctx::subsystem inited{};
-
-    if (sdl_flags & SDL_INIT_VIDEO) inited |= subsystem::video;
-    if (sdl_flags & SDL_INIT_EVENTS) inited |= subsystem::event;
-
-    return inited;
-}
-
-vk::raii::Instance const*
-ctx::inner_vulkan_instance() const noexcept
-{
-    return data->video.has_value() ? &data->video->vulkan_instance : nullptr;
-}
-
 namespace
 {
 
 VKAPI_ATTR VkBool32 VKAPI_CALL
-vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, VkDebugUtilsMessageTypeFlagsEXT type,
+vk_debug_callback(VkDebugUtilsMessageSeverityFlagBitsEXT severity, unsigned int type,
                   VkDebugUtilsMessengerCallbackDataEXT const* data, void* /*user_data*/)
 {
     // NOLINTBEGIN(cppcoreguidelines-pro-bounds-pointer-arithmetic)

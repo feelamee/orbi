@@ -2,12 +2,15 @@
 
 #include <array>
 
+namespace orbi::detail
+{
+
 template <class T, std::size_t Size, std::size_t Alignment>
 struct pimpl
 {
 public:
     template <class... Args>
-    pimpl(Args&&... args)
+    pimpl(Args&&... args) noexcept(std::is_nothrow_constructible_v<T, Args...>)
     {
         std::construct_at(reinterpret_cast<T*>(data.data()), std::forward<Args>(args)...);
     }
@@ -19,26 +22,26 @@ public:
         std::destroy_at(as_held());
     }
 
-    pimpl(pimpl const& other)
+    pimpl(pimpl const& other) noexcept(noexcept(pimpl(*other)))
         : pimpl(*other)
     {
     }
 
-    pimpl(pimpl&& other)
-        : pimpl(*other)
+    pimpl(pimpl&& other) noexcept(noexcept(pimpl(std::move(*other))))
+        : pimpl(std::move(*other))
     {
     }
 
     pimpl& operator=(pimpl&&) = delete;
 
     pimpl&
-    operator=(pimpl other)
+    operator=(pimpl other) noexcept(noexcept(*as_held() = std::move(*other)))
     {
         *as_held() = std::move(*other);
     }
 
     friend void
-    swap(pimpl& l, pimpl& r)
+    swap(pimpl& l, pimpl& r) noexcept
     {
         using std::swap;
 
@@ -91,3 +94,5 @@ private:
 
     alignas(Alignment) std::array<std::byte, Size> data;
 };
+
+} // namespace orbi::detail

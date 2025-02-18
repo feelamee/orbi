@@ -1,4 +1,5 @@
-Checks: '-*, # disable all to specify needed manually
+Checks: '
+        -*
 
         ,readability-identifier-naming
         ,readability-convert-member-functions-to-static
@@ -71,6 +72,7 @@ Checks: '-*, # disable all to specify needed manually
         ,-cppcoreguidelines-avoid-do-while
         ,-cppcoreguidelines-pro-type-reinterpret-cast
         ,-cppcoreguidelines-special-member-functions
+
         ,clang-analyzer-*
 
         ,misc-const-correctness
@@ -95,8 +97,6 @@ CheckOptions:
   - key:             readability-identifier-naming.EnumConstantCase
     value:           UPPER_CASE
 
-  - key:             readability-identifier-naming.ScopedEnumCase
-    value:           lower_case
   - key:             readability-identifier-naming.ScopedEnumConstantCase
     value:           lower_case
 
@@ -116,7 +116,7 @@ CheckOptions:
   - key:             readability-identifier-naming.GlobalConstantCase
     value:           lower_case
 
-  - key:             readability-identifier-naming.TypdefCase
+  - key:             readability-identifier-naming.TypedefCase
     value:           lower_case
   - key:             readability-identifier-naming.TypeAliasCase
     value:           lower_case
@@ -134,3 +134,6 @@ CheckOptions:
 
   - key:             readability-operators-representation.BinaryOperators
     value:           "&&;&=;&;|;~;!;!=;||;|=;^;^="
+
+  - key:             cppcoreguidelines-special-member-functions.AllowImplicitlyDeletedCopyOrMove
+    value:           true

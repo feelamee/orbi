@@ -1,45 +1,33 @@
 #pragma once
 
+#include <orbi/detail/pimpl.hpp>
 #include <orbi/detail/util.hpp>
-#include <orbi/pimpl.hpp>
 
 #include <vulkan/vulkan_raii.hpp>
-
-#include <cstdint>
 
 namespace orbi
 {
 
 struct window;
-struct ctx;
+struct context;
 
-struct device : detail::noncopyable
+struct device
 {
-    device(ctx const&, window const&);
+    device(context const&, window const&);
     ~device();
 
-    device(device&&);
+    device(device&&) noexcept;
     device& operator=(device);
 
     friend void swap(device&, device&) noexcept;
 
-    // TODO remove; created only to postpone design of api
-    vk::raii::PhysicalDevice const& inner_vulkan_physical_device() const;
-    vk::raii::Device const& inner_vulkan_device() const;
+    void wait_until_idle() const;
 
-    enum class queue_family
-    {
-        graphics,
-        present,
-    };
-
-    using queue_family_index_type = std::uint32_t;
-    queue_family_index_type inner_vulkan_queue_family_index(queue_family) const;
+    struct impl;
+    friend impl;
 
 private:
-    struct impl;
-
-    pimpl<impl, 48, 8> data;
+    detail::pimpl<impl, 48, 8> data;
 };
 
 } // namespace orbi
